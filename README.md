@@ -1,64 +1,72 @@
 # Shoot Roster Dashboard
 
-A static, single-page dashboard for the **Production Roster** Google Sheet: shoot
+A single-page dashboard for the **Production Roster** Google Sheet: shoot
 sessions, videos, hours, brand breakdown, and per-talent monthly video caps.
+
+It reads the sheet **live, client-side, on every page load**, and again
+automatically every 5 minutes while left open. There's no backend, no build
+step, and nothing to regenerate after logging a shoot.
+
+## One-time setup (required before this works publicly)
+
+Two manual steps — neither can be done from here, both are one-click:
+
+1. **Share the sheet for live reads.** Open the
+   [sheet](https://docs.google.com/spreadsheets/d/1R83tcGSZs8BgMHXt5hwByimyVUCKqyhKTUVZhNjTCbA/edit) →
+   **Share** → **General access** → set to **"Anyone with the link" / Viewer**.
+   The dashboard fetches the *Production Roster* and *Talent Tracker* tabs via
+   Google's read-only `gviz` endpoint, which requires this. It only grants
+   read access — nobody can edit via this link.
+2. **Turn on GitHub Pages.** Repo → **Settings → Pages → Source: "GitHub
+   Actions."** The included workflow (`.github/workflows/pages.yml`) then
+   deploys automatically on every push to `main`. First deploy needs a push
+   to `main` after Pages is enabled (or run the workflow manually from the
+   **Actions** tab).
+
+Once both are done, the Pages URL (shown in the repo's **Settings → Pages**
+page, or the Actions run's deployment output) is a plain link anyone can open
+— no login, no setup on their end.
 
 ## Files
 
-- `index.html` — the dashboard. Fully self-contained (no build step, no
-  dependencies) other than fetching `data.json`.
-- `data.json` — the roster data, plus per-talent monthly video caps. This is
-  what needs updating after each shoot.
+- `index.html` — the dashboard. All markup, styles and logic in one file.
+- `data.json` — a cached snapshot, used only as the instant first paint and
+  as a fallback if the live fetch ever fails (sheet unreachable, sharing
+  turned off, etc.). Not required for normal operation; safe to leave as-is.
+- `.github/workflows/pages.yml` — deploys this repo to GitHub Pages on every
+  push to `main`.
 
-## Viewing it
+## How the live fetch works
 
-Open `index.html` in a browser, or serve the folder with any static file
-server, e.g.:
+On load, the dashboard renders the cached `data.json` immediately, then
+fetches the sheet in the background via
+`https://docs.google.com/spreadsheets/d/<id>/gviz/tq?tqx=out:json&sheet=<name>`
+and replaces the view once that returns — typically well under a second. A
+small **"Refresh now"** button forces an immediate re-fetch, and it also
+re-fetches every 5 minutes on its own while the tab stays open. Per-talent
+monthly caps are read live from the **Talent Tracker** sheet's `Cap` column,
+falling back to a hardcoded default (70, 50 for Felicia) for any talent not
+found there.
 
-```
-python3 -m http.server 8000
-```
+If the live fetch fails for any reason, a banner says so and the dashboard
+keeps showing the last data it had (either the bundled `data.json` snapshot,
+or the last successful live fetch this session) rather than going blank.
 
-then visit `http://localhost:8000/`. It also works as-is on GitHub Pages
-(enable Pages for this repo, root of the default branch).
+### Refreshing the bundled fallback snapshot
 
-## Keeping it up to date
-
-The dashboard reads a static snapshot (`data.json`), not the live sheet, so it
-needs a manual refresh after new shoots are logged:
-
-1. Log each new shoot session in the **Production Roster** tab of the sheet,
-   as usual.
-2. Ask Claude Code to "refresh the roster dashboard from the sheet" — it reads
-   the current sheet and regenerates `data.json`.
-3. Commit and push (Claude will do this as part of the refresh). If the
-   dashboard is deployed (e.g. GitHub Pages), it updates automatically on
-   push.
-
-### `data.json` shape
-
-```json
-{
-  "meta": {
-    "sourceUrl": "...",
-    "generatedAt": "YYYY-MM-DD",
-    "talentCaps": { "TalentName": 70 },
-    "defaultCap": 70
-  },
-  "rows": [
-    { "no": 1, "brand": "...", "talent": "...", "date": "YYYY-MM-DD", "pic": "...", "videos": 2, "hours": 6 }
-  ]
-}
-```
-
-`talent` is `null` for a logged session with no talent recorded (shown as
-"Unassigned" in the dashboard). `videos` is `null` when that cell was blank in
-the sheet.
+Not required for day-to-day use, but keeps the offline/first-paint fallback
+reasonably current. Ask Claude Code to "refresh the roster dashboard's cached
+snapshot" — it re-reads the sheet and regenerates `data.json`, then commit
+and push.
 
 ## Notes on the data
 
-Totals in this dashboard are computed directly from the raw session rows in
-`data.json`, which occasionally differ slightly from the sheet's own manual
-"Talent Tracker" / "Monthly History" pivot tables (those appear to lag a few
-rows behind the raw log). Treat this dashboard's totals as the source of
-truth — they're recomputed from the full row list on every load.
+Totals in this dashboard are computed directly from the raw session rows,
+which occasionally differ slightly from the sheet's own manual "Talent
+Tracker" / "Monthly History" pivot tables (those appear to lag a few rows
+behind the raw log). Treat this dashboard's totals as the source of truth —
+they're recomputed from the full row list on every load, live or cached.
+
+`talent` is blank for a logged session with no talent recorded (shown as
+"Unassigned"). A blank `videos` cell is treated as no data (excluded from
+totals), not zero.

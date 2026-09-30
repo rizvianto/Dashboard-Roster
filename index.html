@@ -58,6 +58,9 @@ header.top{display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between
 header.top .meta{font-size:.8rem; text-align:right;}
 header.top .meta a{text-decoration:none;}
 header.top .meta a:hover{text-decoration:underline;}
+.livedot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--status-good); margin-left:6px; box-shadow:0 0 0 0 rgba(12,163,12,.5); animation:pulse 2s infinite;}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(12,163,12,.45);} 70%{box-shadow:0 0 0 6px rgba(12,163,12,0);} 100%{box-shadow:0 0 0 0 rgba(12,163,12,0);}}
+.banner{background:color-mix(in srgb, var(--status-warning) 18%, var(--surface)); border:1px solid var(--border); border-radius:10px; padding:10px 14px; font-size:.82rem; margin-bottom:16px;}
 
 /* ---- filter bar ---- */
 .filterbar{
@@ -193,10 +196,15 @@ code{background:var(--grid); padding:1px 5px; border-radius:5px; font-size:.85em
     <p class="secondary" style="margin:4px 0 0; font-size:.9rem;">Shoot sessions, hours and talent workload &mdash; Production Roster</p>
   </div>
   <div class="meta secondary">
-    <div>Data as of <strong id="asof">&mdash;</strong></div>
-    <div><a id="source-link" href="#" target="_blank" rel="noopener">Open source sheet ↗</a></div>
+    <div id="asof">Loading…</div>
+    <div style="margin-top:5px; display:flex; gap:12px; justify-content:flex-end; align-items:center;">
+      <button class="reset" id="refresh-btn" type="button">Refresh now</button>
+      <a id="source-link" href="#" target="_blank" rel="noopener">Open source sheet ↗</a>
+    </div>
   </div>
 </header>
+
+<div class="banner" id="live-banner" hidden></div>
 
 <div class="filterbar" role="group" aria-label="Filters">
   <div class="field">
@@ -330,12 +338,12 @@ code{background:var(--grid); padding:1px 5px; border-radius:5px; font-size:.85em
 </section>
 
 <footer class="refresh">
-  <h3>Keeping this up to date</h3>
-  <p class="secondary" style="margin:0;">This dashboard reads from <code>data.json</code> in this project, not live from the sheet.</p>
+  <h3>How this stays up to date</h3>
+  <p class="secondary" style="margin:0;">This dashboard reads the <strong>Production Roster</strong> sheet directly, live, every time it's opened &mdash; and refreshes itself again automatically every 5 minutes while left open on a screen.</p>
   <ol class="secondary">
-    <li>Log each new shoot in the <strong>Production Roster</strong> tab of the sheet, as usual.</li>
-    <li>When you want the dashboard to reflect it, ask Claude Code to &ldquo;refresh the roster dashboard from the sheet&rdquo; &mdash; it re-reads the sheet and updates <code>data.json</code>.</li>
-    <li>Re-publish/redeploy so viewers see the new snapshot.</li>
+    <li>Log each new shoot in the <strong>Production Roster</strong> tab, as usual &mdash; nothing else to do.</li>
+    <li>Reload the page, or use <strong>Refresh now</strong> in the header, for an instant pull instead of waiting.</li>
+    <li>If the sheet's sharing is ever changed away from &ldquo;Anyone with the link,&rdquo; live fetches will fail and the dashboard falls back to the last cached snapshot bundled with it, with a banner saying so.</li>
   </ol>
 </footer>
 
@@ -367,29 +375,188 @@ code{background:var(--grid); padding:1px 5px; border-radius:5px; font-size:.85em
 
   function talentDisplay(t){ return t == null ? "Unassigned" : t; }
 
-  // ---------- data load ----------
-  fetch("data.json").then(function(r){ return r.json(); }).then(function(json){
-    state.meta = json.meta;
-    state.rows = json.rows.map(function(r){
-      return { no:r.no, brand:r.brand, talent:r.talent, date:r.date, pic:r.pic,
-               videos: (r.videos==null? null : Number(r.videos)),
-               hours: Number(r.hours), month: monthKey(r.date) };
+  // ---------- config ----------
+  var CONFIG = {
+    sheetId: "1R83tcGSZs8BgMHXt5hwByimyVUCKqyhKTUVZhNjTCbA",
+    sheetUrl: "https://docs.google.com/spreadsheets/d/1R83tcGSZs8BgMHXt5hwByimyVUCKqyhKTUVZhNjTCbA/edit",
+    rosterSheet: "Production Roster",
+    capSheet: "Talent Tracker",
+    defaultCap: 70,
+    fallbackCaps: { Ica:70, Dania:70, Dena:70, Gladys:70, Felicia:50, Marsya:70, Gracella:70 },
+    autoRefreshMs: 5*60*1000
+  };
+  var initialized = false;
+
+  // ---------- live sheet fetch ----------
+  function gvizUrl(sheetName){
+    return "https://docs.google.com/spreadsheets/d/"+CONFIG.sheetId+"/gviz/tq?tqx=out:json&sheet="+encodeURIComponent(sheetName);
+  }
+  function parseGviz(text){
+    var start = text.indexOf("{"), end = text.lastIndexOf("}");
+    if(start===-1 || end===-1) throw new Error("unexpected response from sheet");
+    return JSON.parse(text.slice(start, end+1));
+  }
+  var MONTHS3 = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+  function pad2(n){ return n<10 ? "0"+n : ""+n; }
+  function toISO(y,m,d){ return y+"-"+pad2(m+1)+"-"+pad2(d); }
+  function parseSheetDateCell(cell, fallbackYear){
+    if(cell==null || cell.v==null) return null;
+    var raw = cell.v;
+    if(typeof raw==="string" && raw.indexOf("Date(")===0){
+      var m = raw.match(/Date\((\d+),(\d+),(\d+)/);
+      if(m) return { iso: toISO(+m[1], +m[2], +m[3]), year: +m[1] };
+    }
+    var s = String(raw).trim();
+    var m1 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(m1) return { iso: toISO(+m1[3], +m1[2]-1, +m1[1]), year: +m1[3] };
+    var m2 = s.match(/^(\d{1,2})\s+([A-Za-z]+)\.?\s*(\d{4})?$/);
+    if(m2){
+      var mi = MONTHS3.indexOf(m2[2].slice(0,3).toLowerCase());
+      if(mi>=0){
+        var year = m2[3] ? +m2[3] : fallbackYear;
+        return { iso: toISO(year, mi, +m2[1]), year: m2[3] ? +m2[3] : null };
+      }
+    }
+    var d = new Date(s);
+    if(!isNaN(d)) return { iso: toISO(d.getFullYear(), d.getMonth(), d.getDate()), year: d.getFullYear() };
+    return null;
+  }
+  function findCol(cols, matcher){
+    for(var i=0;i<cols.length;i++){ if(matcher((cols[i].label||"").toLowerCase())) return i; }
+    return -1;
+  }
+  var FIXED_IDX = { no:0, brand:1, talent:2, date:3, pic:4, videos:5, hours:6 };
+  function resolveIdx(cols){
+    var idx = {};
+    Object.keys(FIXED_IDX).forEach(function(k){ idx[k]=FIXED_IDX[k]; });
+    var patterns = {
+      no: function(l){ return l==="no."||l==="no"||l.indexOf("no.")===0; },
+      brand: function(l){ return l.indexOf("brand")!==-1; },
+      talent: function(l){ return l.indexOf("talent")!==-1; },
+      date: function(l){ return l.indexOf("date")!==-1; },
+      pic: function(l){ return l.indexOf("videographer")!==-1 || l==="pic"; },
+      videos: function(l){ return l.indexOf("video")!==-1 && l.indexOf("videographer")===-1; },
+      hours: function(l){ return l.indexOf("hour")!==-1; }
+    };
+    Object.keys(patterns).forEach(function(k){ var f = findCol(cols, patterns[k]); if(f!==-1) idx[k]=f; });
+    return idx;
+  }
+  function parseRosterTable(json){
+    var idx = resolveIdx(json.table.cols || []);
+    var fallbackYear = new Date().getFullYear();
+    var rows = [], n = 0;
+    (json.table.rows||[]).forEach(function(r){
+      var c = r.c || [];
+      function cell(i){ return i>=0 ? (c[i]||null) : null; }
+      var brand = cell(idx.brand) && cell(idx.brand).v;
+      var talentCell = cell(idx.talent);
+      var talent = talentCell ? talentCell.v : null;
+      var dateInfo = parseSheetDateCell(cell(idx.date), fallbackYear);
+      var pic = cell(idx.pic) && cell(idx.pic).v;
+      var videosCell = cell(idx.videos), hoursCell = cell(idx.hours);
+      if(dateInfo && dateInfo.year) fallbackYear = dateInfo.year;
+      if(!dateInfo) return; // blank rows / header text rows have no parseable date
+      n++;
+      rows.push({
+        no: (cell(idx.no) && cell(idx.no).v) || n,
+        brand: brand ? String(brand).trim() : "Unknown",
+        talent: talent ? String(talent).trim() : null,
+        date: dateInfo.iso,
+        pic: pic ? String(pic).trim() : "Unknown",
+        videos: (videosCell && videosCell.v!=null) ? Number(videosCell.v) : null,
+        hours: (hoursCell && hoursCell.v!=null) ? Number(hoursCell.v) : 0,
+        month: dateInfo.iso.slice(0,7)
+      });
     });
-    init();
-  }).catch(function(err){
-    document.getElementById("kpis").innerHTML = '<p class="secondary">Could not load data.json: '+esc(err.message)+'</p>';
+    return rows;
+  }
+  function parseCapTable(json){
+    var cols = json.table.cols || [];
+    var iTalent = findCol(cols, function(l){ return l.indexOf("talent")!==-1; });
+    var iCap = findCol(cols, function(l){ return l.indexOf("cap")!==-1; });
+    var caps = {};
+    if(iTalent===-1 || iCap===-1) return caps;
+    (json.table.rows||[]).forEach(function(r){
+      var c = r.c || [];
+      var t = c[iTalent] && c[iTalent].v;
+      var cap = c[iCap] && c[iCap].v;
+      if(t && cap!=null && !isNaN(Number(cap))) caps[String(t).trim()] = Number(cap);
+    });
+    return caps;
+  }
+  function fetchLive(){
+    return Promise.all([
+      fetch(gvizUrl(CONFIG.rosterSheet)).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.text(); }),
+      fetch(gvizUrl(CONFIG.capSheet)).then(function(r){ return r.ok ? r.text() : null; }).catch(function(){ return null; })
+    ]).then(function(results){
+      var rows = parseRosterTable(parseGviz(results[0]));
+      if(!rows.length) throw new Error("sheet returned no usable rows");
+      var caps = {};
+      Object.keys(CONFIG.fallbackCaps).forEach(function(k){ caps[k]=CONFIG.fallbackCaps[k]; });
+      if(results[1]){
+        try { var live = parseCapTable(parseGviz(results[1])); Object.keys(live).forEach(function(k){ caps[k]=live[k]; }); }
+        catch(e){ /* keep fallback caps */ }
+      }
+      return { rows: rows, caps: caps };
+    });
+  }
+
+  // ---------- data load: cached-first paint, then live overlay ----------
+  fetch("data.json").then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }).then(function(cachedJson){
+    var link = document.getElementById("source-link");
+    link.href = CONFIG.sheetUrl;
+    document.getElementById("refresh-btn").addEventListener("click", function(){ refreshLive(false); });
+    if(cachedJson){
+      var rows = cachedJson.rows.map(function(r){
+        return { no:r.no, brand:r.brand, talent:r.talent, date:r.date, pic:r.pic,
+                 videos: (r.videos==null? null : Number(r.videos)),
+                 hours: Number(r.hours), month: monthKey(r.date) };
+      });
+      applyDataset(rows, cachedJson.meta.talentCaps, "cached snapshot from " + (cachedJson.meta.generatedAt||"unknown date"), false);
+    }
+    refreshLive(!cachedJson);
+    setInterval(function(){ refreshLive(false); }, CONFIG.autoRefreshMs);
   });
 
-  function init(){
-    document.getElementById("asof").textContent = state.meta.generatedAt || "—";
-    var link = document.getElementById("source-link");
-    if(state.meta.sourceUrl){ link.href = state.meta.sourceUrl; } else { link.style.display="none"; }
-
-    populateFilters();
-    bindFilterEvents();
-    bindToggles();
-    bindSortableHeaders();
+  function applyDataset(rows, caps, statusLabel, isLive){
+    state.rows = rows;
+    state.meta.talentCaps = caps || CONFIG.fallbackCaps;
+    state.meta.defaultCap = CONFIG.defaultCap;
+    var badge = document.getElementById("asof");
+    badge.innerHTML = isLive
+      ? "Live from the sheet <span class=\"livedot\"></span> &middot; updated " + esc(statusLabel)
+      : "Showing " + esc(statusLabel);
+    if(!initialized){
+      populateFilters();
+      bindFilterEvents();
+      bindToggles();
+      bindSortableHeaders();
+      initialized = true;
+    } else {
+      populateFilters();
+    }
     renderAll();
+  }
+
+  function refreshLive(isFirstLoad){
+    var btn = document.getElementById("refresh-btn");
+    btn.disabled = true; btn.textContent = "Refreshing…";
+    fetchLive().then(function(res){
+      var now = new Date();
+      var label = now.toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"});
+      applyDataset(res.rows, res.caps, label, true);
+      document.getElementById("live-banner").hidden = true;
+    }).catch(function(err){
+      if(isFirstLoad && !initialized){
+        document.getElementById("kpis").innerHTML = '<p class="secondary">Could not load roster data (no cache and live fetch failed: '+esc(err.message)+').</p>';
+      } else {
+        var b = document.getElementById("live-banner");
+        b.hidden = false;
+        b.textContent = "Showing the last cached snapshot — live refresh from the sheet failed (" + err.message + "). This usually means the sheet's sharing changed. Try Refresh now again shortly.";
+      }
+    }).then(function(){
+      btn.disabled = false; btn.textContent = "Refresh now";
+    });
   }
 
   function populateFilters(){
@@ -408,8 +575,12 @@ code{background:var(--grid); padding:1px 5px; border-radius:5px; font-size:.85em
   }
   function fillSelect(id, opts, allLabel){
     var el = document.getElementById(id);
+    var prevValue = el.value || "all";
     el.innerHTML = '<option value="all">'+esc(allLabel)+'</option>' +
       opts.map(function(o){ return '<option value="'+esc(o.v)+'">'+esc(o.l)+'</option>'; }).join("");
+    var stillExists = Array.prototype.some.call(el.options, function(o){ return o.value===prevValue; });
+    el.value = stillExists ? prevValue : "all";
+    state.filters[id.replace("f-","")] = el.value;
   }
 
   function bindFilterEvents(){

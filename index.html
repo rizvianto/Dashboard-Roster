@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shoot Roster Dashboard</title>
+<style>
+:root{
+  /* layout: header + filter bar, KPI strip, talent-cap table, 2x2 chart grid, full data table */
+  --page-bg:#f9f9f7;
+  --surface:#fcfcfb;
+  --text-primary:#0b0b0b;
+  --text-secondary:#52514e;
+  --text-muted:#898781;
+  --grid:#e1e0d9;
+  --axis:#c3c2b7;
+  --border:rgba(11,11,11,0.10);
+  --success-text:#006300;
+  --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a; --series-4:#eda100;
+  --series-5:#e87ba4; --series-6:#008300; --series-7:#4a3aa7; --series-muted:#aeada7;
+  --accent:var(--series-1);
+  --status-good:#0ca30c; --status-warning:#fab219; --status-serious:#ec835a; --status-critical:#d03b3b;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page-bg:#0d0d0d; --surface:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7;
+    --text-muted:#898781; --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+    --success-text:#0ca30c;
+    --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --series-4:#c98500;
+    --series-5:#d55181; --series-6:#008300; --series-7:#9085e9; --series-muted:#55534d;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page-bg:#0d0d0d; --surface:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7;
+  --text-muted:#898781; --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+  --success-text:#0ca30c;
+  --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --series-4:#c98500;
+  --series-5:#d55181; --series-6:#008300; --series-7:#9085e9; --series-muted:#55534d;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;}
+body{
+  background:var(--page-bg); color:var(--text-primary);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-inline:16px; padding-block:20px 40px; max-width:1180px; margin:0 auto;
+}
+h1,h2,h3{font-weight:650; letter-spacing:-0.01em; text-wrap:balance;}
+h1{font-size:1.5rem; margin:0;}
+h2{font-size:1.05rem; margin:0 0 2px;}
+a{color:var(--accent);}
+.muted{color:var(--text-muted);}
+.secondary{color:var(--text-secondary);}
+
+/* ---- header ---- */
+header.top{display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:flex-end; margin-bottom:18px;}
+header.top .meta{font-size:.8rem; text-align:right;}
+header.top .meta a{text-decoration:none;}
+header.top .meta a:hover{text-decoration:underline;}
+
+/* ---- filter bar ---- */
+.filterbar{
+  display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+  background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  padding:10px 12px; margin-bottom:20px;
+}
+.filterbar label{font-size:.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; display:block; margin-bottom:2px;}
+.filterbar .field{display:flex; flex-direction:column; min-width:0;}
+select, input[type=search]{
+  font:inherit; font-size:.85rem; color:var(--text-primary); background:var(--page-bg);
+  border:1px solid var(--border); border-radius:7px; padding:6px 8px; min-width:120px;
+}
+select:focus, input:focus, button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.filterbar .search{flex:1 1 160px;}
+.filterbar input[type=search]{width:100%;}
+button.reset{
+  font:inherit; font-size:.8rem; color:var(--text-secondary); background:transparent;
+  border:1px solid var(--border); border-radius:7px; padding:6px 10px; cursor:pointer; white-space:nowrap;
+}
+button.reset:hover{color:var(--text-primary); border-color:var(--text-muted);}
+
+/* ---- KPI strip ---- */
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:22px;}
+.kpi{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;}
+.kpi .label{font-size:.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em;}
+.kpi .value{font-size:1.55rem; font-weight:650; margin-top:2px; letter-spacing:-0.02em;}
+.kpi .sub{font-size:.75rem; color:var(--text-secondary); margin-top:1px;}
+
+/* ---- section cards ---- */
+.card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:20px;}
+.card .card-head{display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:flex-start; margin-bottom:12px;}
+.card .card-head p{margin:2px 0 0; font-size:.8rem;}
+
+/* metric toggle */
+.toggle{display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; flex-shrink:0;}
+.toggle button{
+  font:inherit; font-size:.78rem; padding:5px 10px; background:var(--surface); color:var(--text-secondary);
+  border:none; cursor:pointer; border-right:1px solid var(--border);
+}
+.toggle button:last-child{border-right:none;}
+.toggle button[aria-pressed=true]{background:var(--accent); color:#fff; font-weight:600;}
+
+/* ---- charts (grid) ---- */
+.chart-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); gap:16px;}
+svg{display:block; overflow:visible;}
+.grid line{stroke:var(--grid); stroke-width:1;}
+.axis-label{fill:var(--text-muted); font-size:9px;}
+.bar-label{fill:var(--text-secondary); font-size:11px;}
+.bar-value{fill:var(--text-primary); font-size:11px; font-variant-numeric:tabular-nums;}
+.bar{transition:filter .1s ease;}
+.bar-g{cursor:pointer;}
+.bar-g:hover .bar{filter:brightness(1.12);}
+.bar-g:hover .bar-label, .bar-g:hover .bar-value{fill:var(--text-primary);}
+.s1{fill:var(--series-1);} .s2{fill:var(--series-2);} .s3{fill:var(--series-3);} .s4{fill:var(--series-4);}
+.s5{fill:var(--series-5);} .s6{fill:var(--series-6);} .s7{fill:var(--series-7);} .smuted{fill:var(--series-muted);}
+.ln1{stroke:var(--series-1);} .ln2{stroke:var(--series-2);} .ln3{stroke:var(--series-3);} .ln4{stroke:var(--series-4);}
+.ln5{stroke:var(--series-5);} .ln6{stroke:var(--series-6);} .ln7{stroke:var(--series-7);} .lnmuted{stroke:var(--series-muted);}
+.line{stroke-width:2; fill:none;}
+.point{fill:var(--surface); stroke-width:2;}
+.hit{fill:transparent;}
+.crosshair{stroke:var(--axis); stroke-width:1; stroke-dasharray:3 3; display:none;}
+
+.legend{display:flex; flex-wrap:wrap; gap:8px 14px; font-size:.76rem; color:var(--text-secondary); margin-top:8px;}
+.legend .item{display:flex; align-items:center; gap:5px;}
+.legend .swatch{width:10px; height:10px; border-radius:3px; flex-shrink:0;}
+
+/* ---- tooltip ---- */
+#tooltip{
+  position:fixed; pointer-events:none; z-index:50; background:var(--text-primary); color:var(--page-bg);
+  font-size:.75rem; padding:6px 9px; border-radius:7px; max-width:220px; line-height:1.4;
+  box-shadow:0 4px 14px rgba(0,0,0,.18); display:none;
+}
+#tooltip .t-title{font-weight:650; margin-bottom:2px;}
+#tooltip .t-row{display:flex; gap:6px; align-items:center; white-space:nowrap;}
+#tooltip .t-row .sw{width:8px; height:8px; border-radius:2px; flex-shrink:0;}
+
+/* ---- status pill ---- */
+.pill{display:inline-flex; align-items:center; gap:5px; font-size:.74rem; font-weight:600; padding:3px 8px; border-radius:99px; white-space:nowrap;}
+.pill .dot{width:7px; height:7px; border-radius:50%; flex-shrink:0;}
+.pill.status-good{color:var(--success-text); background:color-mix(in srgb, var(--status-good) 16%, transparent);}
+.pill.status-good .dot{background:var(--status-good);}
+.pill.status-warning{color:#8a5a00; background:color-mix(in srgb, var(--status-warning) 22%, transparent);}
+.pill.status-warning .dot{background:var(--status-warning);}
+.pill.status-critical{color:var(--status-critical); background:color-mix(in srgb, var(--status-critical) 16%, transparent);}
+.pill.status-critical .dot{background:var(--status-critical);}
+.pill.status-none{color:var(--text-muted); background:var(--grid);}
+.pill.status-none .dot{background:var(--text-muted);}
+:root[data-theme="dark"] .pill.status-warning, @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pill.status-warning{color:#ffd47a;}}
+
+/* ---- tables ---- */
+.table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:10px;}
+table{border-collapse:collapse; width:100%; min-width:560px; font-size:.83rem;}
+thead th{
+  position:sticky; top:0; background:var(--surface); text-align:left; color:var(--text-muted);
+  font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; padding:9px 10px; border-bottom:1px solid var(--border);
+  cursor:pointer; user-select:none; white-space:nowrap;
+}
+thead th:hover{color:var(--text-primary);}
+thead th.num, td.num{text-align:right; font-variant-numeric:tabular-nums;}
+thead th .arrow{opacity:.5; margin-left:3px;}
+tbody td{padding:8px 10px; border-bottom:1px solid var(--border); white-space:nowrap;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:color-mix(in srgb, var(--text-primary) 4%, transparent);}
+.roster-scroll{max-height:420px; overflow-y:auto;}
+.unassigned{font-style:italic; color:var(--text-muted);}
+
+.footnote{font-size:.78rem; color:var(--text-muted); margin-top:4px;}
+details.reveal{margin-top:10px;}
+details.reveal summary{cursor:pointer; font-size:.8rem; color:var(--accent); font-weight:600;}
+details.reveal summary:hover{text-decoration:underline;}
+
+footer.refresh{
+  background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; font-size:.85rem;
+}
+footer.refresh h3{margin:0 0 6px;}
+footer.refresh ol{margin:6px 0 0; padding-left:20px;}
+footer.refresh li{margin-bottom:4px;}
+code{background:var(--grid); padding:1px 5px; border-radius:5px; font-size:.85em;}
+
+@media (max-width:640px){
+  header.top{align-items:flex-start;}
+  header.top .meta{text-align:left;}
+  .kpi .value{font-size:1.3rem;}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <h1>Shoot Roster Dashboard</h1>
+    <p class="secondary" style="margin:4px 0 0; font-size:.9rem;">Shoot sessions, hours and talent workload &mdash; Production Roster</p>
+  </div>
+  <div class="meta secondary">
+    <div>Data as of <strong id="asof">&mdash;</strong></div>
+    <div><a id="source-link" href="#" target="_blank" rel="noopener">Open source sheet ↗</a></div>
+  </div>
+</header>
+
+<div class="filterbar" role="group" aria-label="Filters">
+  <div class="field">
+    <label for="f-month">Month</label>
+    <select id="f-month"></select>
+  </div>
+  <div class="field">
+    <label for="f-brand">Brand</label>
+    <select id="f-brand"></select>
+  </div>
+  <div class="field">
+    <label for="f-talent">Talent</label>
+    <select id="f-talent"></select>
+  </div>
+  <div class="field">
+    <label for="f-pic">Videographer</label>
+    <select id="f-pic"></select>
+  </div>
+  <div class="field search">
+    <label for="f-search">Search</label>
+    <input type="search" id="f-search" placeholder="Brand, talent, PIC…">
+  </div>
+  <button class="reset" id="f-reset" type="button">Reset filters</button>
+</div>
+
+<section class="kpis" id="kpis" aria-label="Key totals"></section>
+
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h2>Talent roster &amp; monthly cap</h2>
+      <p class="secondary">Full-roster snapshot &mdash; always shows all talents, independent of the filters above. Cap tracks video output for the most recent month in the sheet.</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table id="roster-table">
+      <thead>
+        <tr>
+          <th data-key="talent">Talent<span class="arrow"></span></th>
+          <th data-key="sessions" class="num">Sessions<span class="arrow"></span></th>
+          <th data-key="videos" class="num">Total videos<span class="arrow"></span></th>
+          <th data-key="hours" class="num">Total hours<span class="arrow"></span></th>
+          <th data-key="avg" class="num">Avg hrs/session<span class="arrow"></span></th>
+          <th data-key="monthVideos" class="num" id="th-month-videos">Videos<span class="arrow"></span></th>
+          <th data-key="cap" class="num">Cap<span class="arrow"></span></th>
+          <th data-key="remaining" class="num">Remaining<span class="arrow"></span></th>
+          <th data-key="status">Status<span class="arrow"></span></th>
+        </tr>
+      </thead>
+      <tbody id="roster-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<div class="chart-grid">
+  <section class="card">
+    <div class="card-head">
+      <div><h2>Talent performance</h2><p class="secondary">Totals across the filtered sessions, ranked highest first.</p></div>
+      <div class="toggle" id="toggle-talent" role="group" aria-label="Metric">
+        <button data-metric="sessions" aria-pressed="true">Sessions</button>
+        <button data-metric="videos">Videos</button>
+        <button data-metric="hours">Hours</button>
+      </div>
+    </div>
+    <div id="chart-talent"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div><h2>Monthly trend</h2><p class="secondary">Per-talent output over time.</p></div>
+      <div class="toggle" id="toggle-trend" role="group" aria-label="Metric">
+        <button data-metric="videos" aria-pressed="true">Videos</button>
+        <button data-metric="hours">Hours</button>
+      </div>
+    </div>
+    <div id="chart-trend"></div>
+    <div class="legend" id="legend-trend"></div>
+    <details class="reveal">
+      <summary>Show values as a table</summary>
+      <div class="table-wrap" style="margin-top:8px;">
+        <table id="trend-table"><thead></thead><tbody></tbody></table>
+      </div>
+    </details>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div><h2>Brand breakdown</h2><p class="secondary">Ranked highest first.</p></div>
+      <div class="toggle" id="toggle-brand" role="group" aria-label="Metric">
+        <button data-metric="sessions" aria-pressed="true">Sessions</button>
+        <button data-metric="videos">Videos</button>
+        <button data-metric="hours">Hours</button>
+      </div>
+    </div>
+    <div id="chart-brand"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div><h2>Videographer workload</h2><p class="secondary">Ranked highest first.</p></div>
+      <div class="toggle" id="toggle-pic" role="group" aria-label="Metric">
+        <button data-metric="sessions" aria-pressed="true">Sessions</button>
+        <button data-metric="videos">Videos</button>
+        <button data-metric="hours">Hours</button>
+      </div>
+    </div>
+    <div id="chart-pic"></div>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <div><h2>All shoot sessions</h2><p class="secondary" id="rows-count">&mdash;</p></div>
+  </div>
+  <div class="table-wrap roster-scroll">
+    <table id="rows-table">
+      <thead>
+        <tr>
+          <th data-key="no" class="num">No.<span class="arrow"></span></th>
+          <th data-key="brand">Brand<span class="arrow"></span></th>
+          <th data-key="talent">Talent<span class="arrow"></span></th>
+          <th data-key="date">Shoot date<span class="arrow"></span></th>
+          <th data-key="pic">Videographer<span class="arrow"></span></th>
+          <th data-key="videos" class="num">Videos<span class="arrow"></span></th>
+          <th data-key="hours" class="num">Hours<span class="arrow"></span></th>
+        </tr>
+      </thead>
+      <tbody id="rows-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<footer class="refresh">
+  <h3>Keeping this up to date</h3>
+  <p class="secondary" style="margin:0;">This dashboard reads from <code>data.json</code> in this project, not live from the sheet.</p>
+  <ol class="secondary">
+    <li>Log each new shoot in the <strong>Production Roster</strong> tab of the sheet, as usual.</li>
+    <li>When you want the dashboard to reflect it, ask Claude Code to &ldquo;refresh the roster dashboard from the sheet&rdquo; &mdash; it re-reads the sheet and updates <code>data.json</code>.</li>
+    <li>Re-publish/redeploy so viewers see the new snapshot.</li>
+  </ol>
+</footer>
+
+<div id="tooltip"></div>
+
+<script>
+(function(){
+  "use strict";
+  var COLOR_CLASS = {}, LINE_CLASS = {};
+  var TALENT_ORDER = ["Dania","Dena","Felicia","Gladys","Gracella","Ica","Marsya"];
+  TALENT_ORDER.forEach(function(t,i){ COLOR_CLASS[t] = "s"+(i+1); LINE_CLASS[t] = "ln"+(i+1); });
+
+  var state = { rows: [], meta: {}, filters: { month:"all", brand:"all", talent:"all", pic:"all", q:"" } };
+  var metricState = { talent:"sessions", trend:"videos", brand:"sessions", pic:"sessions" };
+  var sortState = { roster: {key:"hours", dir:-1}, rows: {key:"no", dir:1} };
+
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]; }); }
+  function fmt(n){ return (Math.round(n*10)/10).toLocaleString("en-US"); }
+  function monthKey(d){ return d.slice(0,7); }
+  function monthLabel(key){
+    var parts = key.split("-"); var d = new Date(Number(parts[0]), Number(parts[1])-1, 1);
+    return d.toLocaleString("en-US",{month:"short", year:"numeric"});
+  }
+  function dayLabel(iso){
+    var parts = iso.split("-"); var d = new Date(Number(parts[0]), Number(parts[1])-1, Number(parts[2]));
+    return d.toLocaleDateString("en-US",{day:"numeric", month:"short", year:"numeric"});
+  }
+  function uniqSorted(arr){ return Array.from(new Set(arr)).sort(function(a,b){ return a.localeCompare(b); }); }
+
+  function talentDisplay(t){ return t == null ? "Unassigned" : t; }
+
+  // ---------- data load ----------
+  fetch("data.json").then(function(r){ return r.json(); }).then(function(json){
+    state.meta = json.meta;
+    state.rows = json.rows.map(function(r){
+      return { no:r.no, brand:r.brand, talent:r.talent, date:r.date, pic:r.pic,
+               videos: (r.videos==null? null : Number(r.videos)),
+               hours: Number(r.hours), month: monthKey(r.date) };
+    });
+    init();
+  }).catch(function(err){
+    document.getElementById("kpis").innerHTML = '<p class="secondary">Could not load data.json: '+esc(err.message)+'</p>';
+  });
+
+  function init(){
+    document.getElementById("asof").textContent = state.meta.generatedAt || "—";
+    var link = document.getElementById("source-link");
+    if(state.meta.sourceUrl){ link.href = state.meta.sourceUrl; } else { link.style.display="none"; }
+
+    populateFilters();
+    bindFilterEvents();
+    bindToggles();
+    bindSortableHeaders();
+    renderAll();
+  }
+
+  function populateFilters(){
+    var months = uniqSorted(state.rows.map(function(r){ return r.month; }));
+    var brands = uniqSorted(state.rows.map(function(r){ return r.brand; }));
+    var talents = uniqSorted(state.rows.map(function(r){ return r.talent; }).filter(function(t){ return t!=null; }));
+    var hasUnassigned = state.rows.some(function(r){ return r.talent==null; });
+    var pics = uniqSorted(state.rows.map(function(r){ return r.pic; }));
+
+    fillSelect("f-month", months.map(function(m){ return {v:m, l:monthLabel(m)}; }), "All months");
+    fillSelect("f-brand", brands.map(function(b){ return {v:b, l:b}; }), "All brands");
+    var talentOpts = talents.map(function(t){ return {v:t, l:t}; });
+    if(hasUnassigned) talentOpts.push({v:"__unassigned", l:"Unassigned"});
+    fillSelect("f-talent", talentOpts, "All talents");
+    fillSelect("f-pic", pics.map(function(p){ return {v:p, l:p}; }), "All videographers");
+  }
+  function fillSelect(id, opts, allLabel){
+    var el = document.getElementById(id);
+    el.innerHTML = '<option value="all">'+esc(allLabel)+'</option>' +
+      opts.map(function(o){ return '<option value="'+esc(o.v)+'">'+esc(o.l)+'</option>'; }).join("");
+  }
+
+  function bindFilterEvents(){
+    ["f-month","f-brand","f-talent","f-pic"].forEach(function(id){
+      document.getElementById(id).addEventListener("change", function(){
+        var key = id.replace("f-","");
+        state.filters[key] = this.value;
+        renderAll();
+      });
+    });
+    document.getElementById("f-search").addEventListener("input", function(){
+      state.filters.q = this.value.trim().toLowerCase();
+      renderAll();
+    });
+    document.getElementById("f-reset").addEventListener("click", function(){
+      state.filters = { month:"all", brand:"all", talent:"all", pic:"all", q:"" };
+      ["f-month","f-brand","f-talent","f-pic"].forEach(function(id){ document.getElementById(id).value = "all"; });
+      document.getElementById("f-search").value = "";
+      renderAll();
+    });
+  }
+
+  function bindToggles(){
+    [["toggle-talent","talent"],["toggle-trend","trend"],["toggle-brand","brand"],["toggle-pic","pic"]].forEach(function(pair){
+      var el = document.getElementById(pair[0]);
+      el.addEventListener("click", function(e){
+        var btn = e.target.closest("button"); if(!btn) return;
+        el.querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed", b===btn ? "true":"false"); });
+        metricState[pair[1]] = btn.dataset.metric;
+        renderAll();
+      });
+    });
+  }
+
+  function bindSortableHeaders(){
+    document.querySelectorAll("#roster-table thead th").forEach(function(th){
+      th.addEventListener("click", function(){
+        var key = th.dataset.key;
+        if(sortState.roster.key===key) sortState.roster.dir *= -1; else { sortState.roster.key=key; sortState.roster.dir=1; }
+        renderRoster(filteredRows());
+      });
+    });
+    document.querySelectorAll("#rows-table thead th").forEach(function(th){
+      th.addEventListener("click", function(){
+        var key = th.dataset.key;
+        if(sortState.rows.key===key) sortState.rows.dir *= -1; else { sortState.rows.key=key; sortState.rows.dir=1; }
+        renderRowsTable(filteredRows());
+      });
+    });
+  }
+
+  // ---------- filtering ----------
+  function filteredRows(){
+    var f = state.filters;
+    return state.rows.filter(function(r){
+      if(f.month!=="all" && r.month!==f.month) return false;
+      if(f.brand!=="all" && r.brand!==f.brand) return false;
+      if(f.talent!=="all"){
+        if(f.talent==="__unassigned"){ if(r.talent!=null) return false; }
+        else if(r.talent!==f.talent) return false;
+      }
+      if(f.pic!=="all" && r.pic!==f.pic) return false;
+      if(f.q){
+        var hay = (r.brand+" "+talentDisplay(r.talent)+" "+r.pic).toLowerCase();
+        if(hay.indexOf(f.q)===-1) return false;
+      }
+      return true;
+    });
+  }
+
+  function renderAll(){
+    var rows = filteredRows();
+    renderKpis(rows);
+    renderRoster(rows);
+    renderTalentChart(rows);
+    renderTrend(rows);
+    renderBrandChart(rows);
+    renderPicChart(rows);
+    renderRowsTable(rows);
+  }
+
+  // ---------- KPIs ----------
+  function renderKpis(rows){
+    var sessions = rows.length;
+    var videos = rows.reduce(function(s,r){ return s+(r.videos||0); }, 0);
+    var hours = rows.reduce(function(s,r){ return s+(r.hours||0); }, 0);
+    var avg = sessions ? hours/sessions : 0;
+    var talents = new Set(rows.map(function(r){ return r.talent; }).filter(function(t){ return t!=null; }));
+    var dates = rows.map(function(r){ return r.date; }).sort();
+    var range = dates.length ? dayLabel(dates[0])+" – "+dayLabel(dates[dates.length-1]) : "No sessions";
+
+    var tiles = [
+      {label:"Shoot sessions", value: sessions},
+      {label:"Total videos", value: fmt(videos)},
+      {label:"Total hours", value: fmt(hours)},
+      {label:"Avg hours / session", value: fmt(avg)},
+      {label:"Active talents", value: talents.size},
+      {label:"Date range", value: range, small:true}
+    ];
+    document.getElementById("kpis").innerHTML = tiles.map(function(t){
+      return '<div class="kpi"><div class="label">'+esc(t.label)+'</div><div class="value" style="'+(t.small?'font-size:1.05rem;':'')+'">'+esc(t.value)+'</div></div>';
+    }).join("");
+  }
+
+  // ---------- roster / cap table (whole dataset, not filtered) ----------
+  function capStatus(remaining, cap){
+    if(cap==null) return {cls:"status-none", label:"No cap set"};
+    if(remaining<=0) return {cls:"status-critical", label:"Over cap"};
+    var pct = remaining/cap;
+    if(pct<=0.15) return {cls:"status-critical", label:"Full"};
+    if(pct<=0.35) return {cls:"status-warning", label:"Almost full"};
+    return {cls:"status-good", label:"Available"};
+  }
+
+  function rosterData(){
+    var byTalent = {};
+    state.rows.forEach(function(r){
+      if(r.talent==null) return;
+      byTalent[r.talent] = byTalent[r.talent] || { talent:r.talent, sessions:0, videos:0, hours:0, monthVideos:0 };
+      byTalent[r.talent].sessions++;
+      byTalent[r.talent].videos += (r.videos||0);
+      byTalent[r.talent].hours += r.hours;
+    });
+    var lastMonth = uniqSorted(state.rows.map(function(r){ return r.month; })).pop();
+    state.rows.forEach(function(r){
+      if(r.talent==null || r.month!==lastMonth) return;
+      byTalent[r.talent].monthVideos += (r.videos||0);
+    });
+    document.getElementById("th-month-videos").firstChild.textContent = "Videos (" + (lastMonth?monthLabel(lastMonth):"—") + ") ";
+    var caps = state.meta.talentCaps || {};
+    var defCap = state.meta.defaultCap;
+    return Object.values(byTalent).map(function(t){
+      var cap = (caps[t.talent]!=null) ? caps[t.talent] : defCap;
+      var remaining = cap!=null ? cap - t.monthVideos : null;
+      var st = capStatus(remaining, cap);
+      return { talent:t.talent, sessions:t.sessions, videos:t.videos, hours:t.hours,
+               avg: t.sessions ? t.hours/t.sessions : 0, monthVideos:t.monthVideos,
+               cap: cap, remaining: remaining, status: st.label, statusCls: st.cls };
+    });
+  }
+
+  function renderRoster(){
+    var data = rosterData();
+    var key = sortState.roster.key, dir = sortState.roster.dir;
+    data.sort(function(a,b){
+      var av=a[key], bv=b[key];
+      if(typeof av==="string") return av.localeCompare(bv)*dir;
+      return ((av||0)-(bv||0))*dir;
+    });
+    document.getElementById("roster-tbody").innerHTML = data.map(function(t){
+      return "<tr>"+
+        "<td>"+esc(t.talent)+"</td>"+
+        "<td class=\"num\">"+t.sessions+"</td>"+
+        "<td class=\"num\">"+fmt(t.videos)+"</td>"+
+        "<td class=\"num\">"+fmt(t.hours)+"</td>"+
+        "<td class=\"num\">"+fmt(t.avg)+"</td>"+
+        "<td class=\"num\">"+fmt(t.monthVideos)+"</td>"+
+        "<td class=\"num\">"+(t.cap!=null?t.cap:"—")+"</td>"+
+        "<td class=\"num\">"+(t.remaining!=null?fmt(Math.max(0,t.remaining)):"—")+"</td>"+
+        "<td><span class=\"pill "+t.statusCls+"\"><span class=\"dot\"></span>"+esc(t.status)+"</span></td>"+
+      "</tr>";
+    }).join("");
+  }
+
+  // ---------- shared tooltip ----------
+  var tip = document.getElementById("tooltip");
+  function showTip(html, x, y){ tip.innerHTML = html; tip.style.display = "block"; moveTip(x,y); }
+  function moveTip(x,y){ tip.style.left = Math.min(x+14, window.innerWidth-230)+"px"; tip.style.top = (y+14)+"px"; }
+  function hideTip(){ tip.style.display = "none"; }
+
+  // ---------- generic horizontal bar chart ----------
+  function barChart(container, data, opts){
+    // data: [{label, value}], opts: {format, colorClassFn}
+    var format = opts.format || fmt;
+    var colorClassFn = opts.colorClassFn || function(){ return "s1"; };
+    var width = 520, barH = 24, gap = 9, leftPad = 96, rightPad = 46;
+    var max = Math.max(1, Math.max.apply(null, data.map(function(d){ return d.value; })).valueOf() || 1);
+    if(!data.length){ container.innerHTML = '<p class="secondary" style="padding:20px 0;">No data for this filter.</p>'; return; }
+    var height = data.length*(barH+gap)+gap;
+    var chartW = width-leftPad-rightPad;
+    var ticks = 4, grid = "";
+    for(var i=0;i<=ticks;i++){
+      var x = leftPad + chartW*(i/ticks);
+      grid += '<line x1="'+x+'" y1="4" x2="'+x+'" y2="'+(height-4)+'" class="grid"/>';
+    }
+    var bars = "";
+    data.forEach(function(d, idx){
+      var y = gap + idx*(barH+gap);
+      var w = Math.max(2, chartW*(d.value/max));
+      bars += '<g class="bar-g" data-label="'+esc(d.label)+'" data-value="'+esc(format(d.value))+'" data-color="'+colorClassFn(d)+'">'+
+        '<text x="'+(leftPad-10)+'" y="'+(y+barH/2)+'" class="bar-label" text-anchor="end" dominant-baseline="middle">'+esc(d.label)+'</text>'+
+        '<rect x="'+leftPad+'" y="'+y+'" width="'+w+'" height="'+barH+'" rx="4" class="bar '+colorClassFn(d)+'"/>'+
+        '<text x="'+(leftPad+w+8)+'" y="'+(y+barH/2)+'" class="bar-value" dominant-baseline="middle">'+esc(format(d.value))+'</text>'+
+      '</g>';
+    });
+    container.innerHTML = '<svg viewBox="0 0 '+width+' '+height+'" width="100%" height="'+height+'" role="img" aria-label="bar chart">'+
+      '<g>'+grid+'</g>'+bars+'</svg>';
+    container.querySelectorAll(".bar-g").forEach(function(g){
+      g.addEventListener("pointerenter", function(e){
+        var sw = getComputedStyle(g.querySelector(".bar")).fill;
+        showTip('<div class="t-row"><span class="sw" style="background:'+sw+'"></span>'+esc(g.dataset.label)+': <strong>'+esc(g.dataset.value)+'</strong></div>', e.clientX, e.clientY);
+      });
+      g.addEventListener("pointermove", function(e){ moveTip(e.clientX, e.clientY); });
+      g.addEventListener("pointerleave", hideTip);
+    });
+  }
+
+  function aggregate(rows, keyFn, metric){
+    var m = {};
+    rows.forEach(function(r){
+      var k = keyFn(r); if(k==null) return;
+      m[k] = m[k] || {sessions:0, videos:0, hours:0};
+      m[k].sessions++; m[k].videos += (r.videos||0); m[k].hours += r.hours;
+    });
+    return Object.keys(m).map(function(k){ return {label:k, value:m[k][metric], all:m[k]}; })
+      .sort(function(a,b){ return b.value-a.value; });
+  }
+
+  function renderTalentChart(rows){
+    var metric = metricState.talent;
+    var data = aggregate(rows, function(r){ return talentDisplay(r.talent); }, metric);
+    barChart(document.getElementById("chart-talent"), data, {
+      colorClassFn: function(d){ return COLOR_CLASS[d.label] || "smuted"; }
+    });
+  }
+  function renderBrandChart(rows){
+    var metric = metricState.brand;
+    var data = aggregate(rows, function(r){ return r.brand; }, metric);
+    barChart(document.getElementById("chart-brand"), data, { colorClassFn: function(){ return "s1"; } });
+  }
+  function renderPicChart(rows){
+    var metric = metricState.pic;
+    var data = aggregate(rows, function(r){ return r.pic; }, metric);
+    barChart(document.getElementById("chart-pic"), data, { colorClassFn: function(){ return "s2"; } });
+  }
+
+  // ---------- monthly trend (multi-line) ----------
+  function renderTrend(rows){
+    var metric = metricState.trend;
+    var months = uniqSorted(rows.map(function(r){ return r.month; }));
+    var talents = uniqSorted(rows.map(function(r){ return talentDisplay(r.talent); }));
+    var series = {};
+    talents.forEach(function(t){ series[t] = months.map(function(){ return 0; }); });
+    rows.forEach(function(r){
+      var t = talentDisplay(r.talent);
+      var mi = months.indexOf(r.month);
+      series[t][mi] += (metric==="videos" ? (r.videos||0) : r.hours);
+    });
+
+    var container = document.getElementById("chart-trend");
+    if(!months.length){ container.innerHTML = '<p class="secondary" style="padding:20px 0;">No data for this filter.</p>'; document.getElementById("legend-trend").innerHTML=""; renderTrendTable([],{},metric); return; }
+
+    var width = 560, height = 250, leftPad = 40, rightPad = 14, topPad = 14, bottomPad = 28;
+    var chartW = width-leftPad-rightPad, chartH = height-topPad-bottomPad;
+    var allVals = Object.values(series).reduce(function(a,v){ return a.concat(v); }, []);
+    var max = Math.max(1, Math.max.apply(null, allVals));
+    var stepX = months.length>1 ? chartW/(months.length-1) : 0;
+    function xFor(i){ return leftPad + stepX*i; }
+    function yFor(v){ return topPad + chartH - (v/max)*chartH; }
+
+    var ticks = 4, grid = "", ylabels = "";
+    for(var t=0;t<=ticks;t++){
+      var v = max*t/ticks, y = yFor(v);
+      grid += '<line x1="'+leftPad+'" y1="'+y+'" x2="'+(width-rightPad)+'" y2="'+y+'" class="grid"/>';
+      ylabels += '<text x="'+(leftPad-8)+'" y="'+y+'" class="axis-label" text-anchor="end" dominant-baseline="middle">'+Math.round(v)+'</text>';
+    }
+    var xlabels = "";
+    months.forEach(function(m,i){
+      if(months.length>7 && i%2!==0 && i!==months.length-1) return;
+      xlabels += '<text x="'+xFor(i)+'" y="'+(height-8)+'" class="axis-label" text-anchor="middle">'+esc(monthLabel(m))+'</text>';
+    });
+    var paths = "", points = "";
+    talents.forEach(function(tal){
+      var cls = LINE_CLASS[tal] || "lnmuted";
+      var d = series[tal].map(function(v,i){ return (i===0?"M ":"L ")+xFor(i)+" "+yFor(v); }).join(" ");
+      paths += '<path d="'+d+'" class="line '+cls+'"/>';
+      series[tal].forEach(function(v,i){
+        points += '<circle cx="'+xFor(i)+'" cy="'+yFor(v)+'" r="4" class="point '+cls+'" style="fill:var(--surface)"/>';
+      });
+    });
+    var crosshair = '<line x1="0" y1="'+topPad+'" x2="0" y2="'+(topPad+chartH)+'" class="crosshair" id="trend-crosshair"/>';
+    var hit = '<rect x="'+leftPad+'" y="'+topPad+'" width="'+chartW+'" height="'+chartH+'" class="hit" id="trend-hit"/>';
+
+    container.innerHTML = '<svg id="trend-svg" viewBox="0 0 '+width+' '+height+'" width="100%" height="'+height+'">'+
+      '<g>'+grid+'</g>'+paths+points+'<g>'+ylabels+xlabels+'</g>'+crosshair+hit+'</svg>';
+
+    var legend = document.getElementById("legend-trend");
+    legend.innerHTML = talents.map(function(tal){
+      var fillcls = COLOR_CLASS[tal] || "smuted";
+      var color = "var(--"+(COLOR_CLASS[tal] ? "series-"+ (TALENT_ORDER.indexOf(tal)+1) : "series-muted")+")";
+      return '<span class="item"><span class="swatch" style="background:'+color+'"></span>'+esc(tal)+'</span>';
+    }).join("");
+
+    var svg = document.getElementById("trend-svg");
+    var hitEl = document.getElementById("trend-hit");
+    var crossEl = document.getElementById("trend-crosshair");
+    hitEl.addEventListener("pointermove", function(e){
+      var rect = svg.getBoundingClientRect();
+      var scale = width/rect.width;
+      var localX = (e.clientX-rect.left)*scale;
+      var idx = Math.round((localX-leftPad)/(stepX||1));
+      idx = Math.max(0, Math.min(months.length-1, idx));
+      crossEl.style.display = "block";
+      crossEl.setAttribute("x1", xFor(idx)); crossEl.setAttribute("x2", xFor(idx));
+      var rowsHtml = talents.map(function(tal){
+        var color = "var(--"+(COLOR_CLASS[tal] ? "series-"+ (TALENT_ORDER.indexOf(tal)+1) : "series-muted")+")";
+        return '<div class="t-row"><span class="sw" style="background:'+color+'"></span>'+esc(tal)+': <strong>'+fmt(series[tal][idx])+'</strong></div>';
+      }).join("");
+      showTip('<div class="t-title">'+esc(monthLabel(months[idx]))+'</div>'+rowsHtml, e.clientX, e.clientY);
+    });
+    hitEl.addEventListener("pointerleave", function(){ crossEl.style.display="none"; hideTip(); });
+
+    renderTrendTable(months, series, metric, talents);
+  }
+
+  function renderTrendTable(months, series, metric, talents){
+    var thead = document.querySelector("#trend-table thead");
+    var tbody = document.querySelector("#trend-table tbody");
+    if(!months.length){ thead.innerHTML=""; tbody.innerHTML=""; return; }
+    thead.innerHTML = "<tr><th>Month</th>"+talents.map(function(t){ return "<th class=\"num\">"+esc(t)+"</th>"; }).join("")+"</tr>";
+    tbody.innerHTML = months.map(function(m,i){
+      return "<tr><td>"+esc(monthLabel(m))+"</td>"+talents.map(function(t){ return "<td class=\"num\">"+fmt(series[t][i])+"</td>"; }).join("")+"</tr>";
+    }).join("");
+  }
+
+  // ---------- full rows table ----------
+  function renderRowsTable(rows){
+    document.getElementById("rows-count").textContent = rows.length + " session" + (rows.length===1?"":"s") + " matching filters";
+    var data = rows.slice();
+    var key = sortState.rows.key, dir = sortState.rows.dir;
+    data.sort(function(a,b){
+      var av=a[key], bv=b[key];
+      if(av==null && bv==null) return 0;
+      if(av==null) return 1; if(bv==null) return -1;
+      if(typeof av==="string") return av.localeCompare(bv)*dir;
+      return (av-bv)*dir;
+    });
+    document.getElementById("rows-tbody").innerHTML = data.map(function(r){
+      var talentCell = r.talent==null ? '<span class="unassigned">Unassigned</span>' : esc(r.talent);
+      return "<tr>"+
+        "<td class=\"num\">"+r.no+"</td>"+
+        "<td>"+esc(r.brand)+"</td>"+
+        "<td>"+talentCell+"</td>"+
+        "<td>"+dayLabel(r.date)+"</td>"+
+        "<td>"+esc(r.pic)+"</td>"+
+        "<td class=\"num\">"+(r.videos==null?"—":r.videos)+"</td>"+
+        "<td class=\"num\">"+fmt(r.hours)+"</td>"+
+      "</tr>";
+    }).join("");
+  }
+})();
+</script>
+</body>
+</html>

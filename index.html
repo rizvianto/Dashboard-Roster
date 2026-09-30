@@ -4,9 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Shoot Roster Dashboard</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;650;700;800&display=swap">
 <style>
 :root{
   /* layout: header + filter bar, KPI strip, talent-cap table, 2x2 chart grid, full data table */
+  /* brand: Intrepid teal→gold→orange→pink diagonal, sampled from the company deck; chart series stay on the validated dataviz palette below, untouched by branding */
   --page-bg:#f9f9f7;
   --surface:#fcfcfb;
   --text-primary:#0b0b0b;
@@ -18,7 +21,9 @@
   --success-text:#006300;
   --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a; --series-4:#eda100;
   --series-5:#e87ba4; --series-6:#008300; --series-7:#4a3aa7; --series-muted:#aeada7;
-  --accent:var(--series-1);
+  --brand-teal:#1f8fa3; --brand-teal-bright:#4fb5c4; --brand-gold:#f5b515; --brand-orange:#f5871f; --brand-pink:#e8336b;
+  --brand-gradient:linear-gradient(135deg, #7fd8c4 0%, #4fa8d6 26%, var(--brand-gold) 55%, var(--brand-orange) 76%, var(--brand-pink) 100%);
+  --accent:var(--brand-teal);
   --status-good:#0ca30c; --status-warning:#fab219; --status-serious:#ec835a; --status-critical:#d03b3b;
   color-scheme:light;
 }
@@ -29,6 +34,7 @@
     --success-text:#0ca30c;
     --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --series-4:#c98500;
     --series-5:#d55181; --series-6:#008300; --series-7:#9085e9; --series-muted:#55534d;
+    --brand-teal:#5bc4d4; --accent:var(--brand-teal);
     color-scheme:dark;
   }
 }
@@ -38,16 +44,28 @@
   --success-text:#0ca30c;
   --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --series-4:#c98500;
   --series-5:#d55181; --series-6:#008300; --series-7:#9085e9; --series-muted:#55534d;
+  --brand-teal:#5bc4d4; --accent:var(--brand-teal);
   color-scheme:dark;
 }
 *{box-sizing:border-box;}
+html{background:var(--page-bg);}
 body{
   background:var(--page-bg); color:var(--text-primary);
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  padding-inline:16px; padding-block:20px 40px; max-width:1180px; margin:0 auto;
+  font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-inline:16px; padding-block:calc(20px + env(safe-area-inset-top, 0px)) 40px; max-width:1180px; margin:0 auto;
 }
-h1,h2,h3{font-weight:650; letter-spacing:-0.01em; text-wrap:balance;}
+body::before{
+  content:""; position:fixed; top:0; left:0; right:0; height:4px; background:var(--brand-gradient); z-index:40;
+}
+h1,h2,h3{font-weight:700; letter-spacing:-0.01em; text-wrap:balance;}
 h1{font-size:1.5rem; margin:0;}
+.brand-eyebrow{
+  display:inline-flex; align-items:center; gap:6px; font-size:.68rem; font-weight:800; letter-spacing:.11em; text-transform:uppercase;
+  background:var(--brand-gradient); -webkit-background-clip:text; background-clip:text; color:transparent; margin-bottom:2px;
+}
+.brand-eyebrow::before{
+  content:""; width:9px; height:9px; border-radius:3px; background:var(--brand-gradient); flex-shrink:0;
+}
 h2{font-size:1.05rem; margin:0 0 2px;}
 a{color:var(--accent);}
 .muted{color:var(--text-muted);}
@@ -94,6 +112,8 @@ button.reset:hover{color:var(--text-primary); border-color:var(--text-muted);}
 .card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:20px;}
 .card .card-head{display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:flex-start; margin-bottom:12px;}
 .card .card-head p{margin:2px 0 0; font-size:.8rem;}
+.card h2{margin:0 0 8px;}
+.card h2::after{content:""; display:block; width:34px; height:3px; margin-top:7px; border-radius:2px; background:var(--brand-gradient);}
 
 /* metric toggle */
 .toggle{display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; flex-shrink:0;}
@@ -192,6 +212,7 @@ code{background:var(--grid); padding:1px 5px; border-radius:5px; font-size:.85em
 
 <header class="top">
   <div>
+    <div class="brand-eyebrow">Intrepid</div>
     <h1>Shoot Roster Dashboard</h1>
     <p class="secondary" style="margin:4px 0 0; font-size:.9rem;">Shoot sessions, hours and talent workload &mdash; Production Roster</p>
   </div>

@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Submit Shoot Session — Intrepid</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;650;700;800&display=swap">
+<script src="https://accounts.google.com/gsi/client" async></script>
+<style>
+:root{
+  --page-bg:#f9f9f7; --surface:#fcfcfb; --text-primary:#0b0b0b; --text-secondary:#52514e;
+  --text-muted:#898781; --grid:#e1e0d9; --border:rgba(11,11,11,0.10);
+  --brand-teal:#1f8fa3; --brand-teal-bright:#4fb5c4; --brand-gold:#f5b515; --brand-orange:#f5871f; --brand-pink:#e8336b;
+  --brand-gradient:linear-gradient(135deg, #7fd8c4 0%, #4fa8d6 26%, var(--brand-gold) 55%, var(--brand-orange) 76%, var(--brand-pink) 100%);
+  --accent:var(--brand-teal);
+  --status-ok:#0ca30c; --status-warn:#fab219; --status-err:#d03b3b;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page-bg:#0d0d0d; --surface:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7;
+    --text-muted:#898781; --grid:#2c2c2a; --border:rgba(255,255,255,0.10);
+    --brand-teal:#5bc4d4; --accent:var(--brand-teal);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page-bg:#0d0d0d; --surface:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7;
+  --text-muted:#898781; --grid:#2c2c2a; --border:rgba(255,255,255,0.10);
+  --brand-teal:#5bc4d4; --accent:var(--brand-teal);
+  color-scheme:dark;
+}
+*{box-sizing:border-box;}
+html{background:var(--page-bg);}
+body{
+  background:var(--page-bg); color:var(--text-primary);
+  font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-inline:16px; padding-block:calc(28px + env(safe-area-inset-top,0px)) 60px;
+  max-width:520px; margin:0 auto; min-height:100vh;
+}
+body::before{
+  content:""; position:fixed; top:0; left:0; right:0; height:4px;
+  background:var(--brand-gradient); z-index:40;
+}
+h1,h2{font-weight:700; letter-spacing:-0.01em; text-wrap:balance;}
+h1{font-size:1.35rem; margin:0;}
+h2{font-size:1rem; margin:0 0 18px;}
+a{color:var(--accent);}
+
+.brand-eyebrow{
+  display:inline-flex; align-items:center; gap:6px; font-size:.68rem; font-weight:800;
+  letter-spacing:.11em; text-transform:uppercase;
+  background:var(--brand-gradient); -webkit-background-clip:text; background-clip:text;
+  color:transparent; margin-bottom:2px;
+}
+.brand-eyebrow::before{content:""; width:9px; height:9px; border-radius:3px; background:var(--brand-gradient); flex-shrink:0;}
+
+.page-header{display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; align-items:flex-end; margin-bottom:22px;}
+.back-link{font-size:.8rem; color:var(--text-secondary); text-decoration:none; align-self:center;}
+.back-link:hover{color:var(--accent);}
+
+.card{
+  background:var(--surface); border:1px solid var(--border); border-radius:14px;
+  padding:22px 20px; margin-bottom:16px;
+}
+.card h2::after{
+  content:""; display:block; width:34px; height:3px; margin-top:7px; border-radius:2px;
+  background:var(--brand-gradient);
+}
+
+/* setup banner */
+.setup-banner{
+  background:color-mix(in srgb, var(--status-warn) 12%, var(--surface));
+  border:1px solid color-mix(in srgb, var(--status-warn) 40%, var(--border));
+  border-radius:10px; padding:14px 16px; font-size:.82rem; line-height:1.6; margin-bottom:16px;
+}
+.setup-banner b{display:block; margin-bottom:4px;}
+.setup-banner ol{margin:6px 0 0; padding-left:18px;}
+.setup-banner li{margin-bottom:3px;}
+code{font-family:ui-monospace,monospace; font-size:.83em; background:var(--grid); padding:1px 5px; border-radius:3px;}
+
+/* sign-in wall */
+.signin-intro{color:var(--text-secondary); font-size:.9rem; margin:0 0 20px; line-height:1.55;}
+.signin-intro strong{color:var(--text-primary);}
+#g-signin-btn{display:flex; justify-content:center; margin-bottom:6px;}
+.signin-note{font-size:.74rem; color:var(--text-muted); text-align:center;}
+
+/* user chip */
+.user-chip{
+  display:flex; align-items:center; gap:10px; background:var(--page-bg);
+  border:1px solid var(--border); border-radius:30px; padding:5px 12px 5px 5px;
+  margin-bottom:18px;
+}
+.user-chip img{width:28px; height:28px; border-radius:50%; object-fit:cover; background:var(--grid);}
+.user-chip .uname{font-size:.84rem; font-weight:700;}
+.user-chip .uemail{font-size:.71rem; color:var(--text-muted);}
+.user-chip .sign-out{margin-left:auto; font-size:.72rem; color:var(--text-muted); cursor:pointer; text-decoration:underline; border:none; background:none; padding:0; font-family:inherit;}
+
+/* form */
+.form-grid{display:flex; flex-direction:column; gap:15px;}
+.field{display:flex; flex-direction:column; gap:5px;}
+.field label{font-size:.75rem; font-weight:700; letter-spacing:.03em; color:var(--text-secondary); text-transform:uppercase;}
+.req{color:var(--brand-pink);}
+
+input,select{
+  font:inherit; font-size:.92rem; color:var(--text-primary); background:var(--page-bg);
+  border:1.5px solid var(--border); border-radius:8px; padding:9px 11px;
+  transition:border-color .15s, box-shadow .15s; width:100%; -webkit-appearance:none;
+}
+input:focus,select:focus{
+  outline:none; border-color:var(--accent);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+input[readonly]{background:var(--grid); color:var(--text-secondary); cursor:default;}
+input[type=number]{-moz-appearance:textfield;}
+input[type=number]::-webkit-inner-spin-button{opacity:.5;}
+
+.other-field{display:none; flex-direction:column; gap:5px; margin-top:6px;}
+.other-field.visible{display:flex;}
+
+.field-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+.submit-btn{
+  width:100%; padding:13px; border-radius:9px; border:none; cursor:pointer;
+  font:inherit; font-size:.98rem; font-weight:700; letter-spacing:.01em;
+  color:#fff; background:var(--brand-gradient); background-size:200% 200%; background-position:left center;
+  transition:background-position .35s, opacity .15s, transform .1s;
+  box-shadow:0 2px 14px color-mix(in srgb, var(--brand-teal) 32%, transparent);
+  margin-top:4px;
+}
+.submit-btn:hover:not(:disabled){background-position:right center;}
+.submit-btn:active:not(:disabled){transform:scale(.98);}
+.submit-btn:disabled{opacity:.5; cursor:not-allowed;}
+
+/* feedback */
+#feedback{
+  margin-top:14px; padding:12px 14px; border-radius:9px; font-size:.86rem; display:none; line-height:1.5;
+}
+#feedback.error{
+  background:color-mix(in srgb, var(--status-err) 10%, var(--surface));
+  border:1px solid color-mix(in srgb, var(--status-err) 28%, var(--border));
+}
+#feedback b{display:block; margin-bottom:3px;}
+
+/* success state */
+#success-state{display:none; text-align:center; padding:12px 0 4px;}
+.check-icon{font-size:2.8rem; line-height:1; margin-bottom:10px;}
+#success-state h2{font-size:1.15rem; margin-bottom:6px;}
+#success-state h2::after{margin:7px auto 0;}
+#success-state p{color:var(--text-secondary); font-size:.88rem; margin:0 0 22px; line-height:1.6;}
+.btn-ghost{
+  display:inline-block; font:inherit; font-size:.86rem; color:var(--accent); background:transparent;
+  border:1.5px solid var(--border); border-radius:8px; padding:9px 18px; cursor:pointer;
+  text-decoration:none; margin:4px; transition:border-color .15s;
+}
+.btn-ghost:hover{border-color:var(--accent);}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <div class="brand-eyebrow">Intrepid Studio</div>
+    <h1>Submit Shoot Session</h1>
+  </div>
+  <a class="back-link" href="index.html">← Dashboard</a>
+</div>
+
+<div class="setup-banner" id="setup-banner" hidden>
+  <b>⚠ Setup required — this form isn't configured yet</b>
+  Two values in <code>submit.html</code> need to be filled in before it works:
+  <ol>
+    <li>Deploy <strong>apps-script.gs</strong> as an Apps Script Web App from the sheet → paste the URL into <code>CONFIG.appsScriptUrl</code></li>
+    <li>Create a <strong>Google OAuth Client ID</strong> in Google Cloud Console → paste it into <code>CONFIG.googleClientId</code></li>
+  </ol>
+  See <code>apps-script.gs</code> in the repo for the full setup walkthrough.
+</div>
+
+<!-- Sign-in wall -->
+<div class="card" id="signin-wall">
+  <div class="brand-eyebrow">Team access</div>
+  <h2>Sign in to continue</h2>
+  <p class="signin-intro">Use your <strong>@intrepid.asia</strong> Google account to log a new shoot session directly to the roster.</p>
+  <div id="g-signin-btn"></div>
+  <p class="signin-note">Only @intrepid.asia accounts are accepted.</p>
+</div>
+
+<!-- Form (hidden until signed in) -->
+<div class="card" id="form-card" hidden>
+  <div id="form-main">
+    <div id="user-chip-wrap"></div>
+    <h2>New Shoot Session</h2>
+    <form id="shoot-form" class="form-grid" novalidate>
+
+      <div class="field">
+        <label for="brand-select">Brand <span class="req">*</span></label>
+        <select id="brand-select" required>
+          <option value="">— select brand —</option>
+        </select>
+        <div class="other-field" id="brand-other-wrap">
+          <input type="text" id="brand-other" placeholder="Enter brand name">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="talent-select">Talent <span class="req">*</span></label>
+        <select id="talent-select" required>
+          <option value="">— select talent —</option>
+        </select>
+        <div class="other-field" id="talent-other-wrap">
+          <input type="text" id="talent-other" placeholder="Enter talent name">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="shoot-date">Shoot Date <span class="req">*</span></label>
+        <input type="date" id="shoot-date" required>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="videos">Videos <span class="req">*</span></label>
+          <input type="number" id="videos" min="0" step="1" placeholder="0" required>
+        </div>
+        <div class="field">
+          <label for="hours">Hours <span class="req">*</span></label>
+          <input type="number" id="hours" min="0" step="0.5" placeholder="0.0" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="pic">Videographer (PIC)</label>
+        <input type="text" id="pic" readonly title="Auto-filled from your Google account">
+      </div>
+
+      <button class="submit-btn" type="submit" id="submit-btn">Submit Session</button>
+    </form>
+    <div id="feedback"></div>
+  </div>
+
+  <div id="success-state">
+    <div class="check-icon">✓</div>
+    <h2>Session logged!</h2>
+    <p>Sent to the Production Roster.<br>Check the sheet to confirm it appeared, then the dashboard will pick it up on the next refresh.</p>
+    <button class="btn-ghost" id="submit-another">Submit another</button>
+    <a class="btn-ghost" href="index.html">View dashboard</a>
+  </div>
+</div>
+
+<script>
+var CONFIG = {
+  sheetId: "1R83tcGSZs8BgMHXt5hwByimyVUCKqyhKTUVZhNjTCbA",
+  rosterSheet: "Production Roster",
+  allowedDomain: "intrepid.asia",
+  googleClientId: "YOUR_GOOGLE_CLIENT_ID",  // ← paste OAuth Client ID here
+  appsScriptUrl: "YOUR_APPS_SCRIPT_URL"     // ← paste Apps Script Web App URL here
+};
+
+var currentUser = null;
+
+// Show setup banner if placeholders are still in place
+if (CONFIG.googleClientId === "YOUR_GOOGLE_CLIENT_ID" || CONFIG.appsScriptUrl === "YOUR_APPS_SCRIPT_URL") {
+  document.getElementById("setup-banner").hidden = false;
+}
+
+/* ---------- Google Identity Services ---------- */
+window.addEventListener("load", function () {
+  if (CONFIG.googleClientId === "YOUR_GOOGLE_CLIENT_ID") return;
+  google.accounts.id.initialize({
+    client_id: CONFIG.googleClientId,
+    callback: handleCredential,
+    hd: CONFIG.allowedDomain
+  });
+  google.accounts.id.renderButton(
+    document.getElementById("g-signin-btn"),
+    { theme: "outline", size: "large", text: "signin_with", shape: "rectangular", width: 280 }
+  );
+  google.accounts.id.prompt(); // silent sign-in for returning users
+});
+
+function handleCredential(resp) {
+  var payload = decodeJwt(resp.credential);
+  if (payload.hd !== CONFIG.allowedDomain) {
+    alert("Only @" + CONFIG.allowedDomain + " accounts are allowed.");
+    return;
+  }
+  currentUser = {
+    name: payload.name,
+    given_name: payload.given_name || payload.name.split(" ")[0],
+    email: payload.email,
+    picture: payload.picture || ""
+  };
+  showForm();
+}
+
+function decodeJwt(token) {
+  var b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+  var pad = b64.length % 4;
+  if (pad) b64 += "===".slice(0, 4 - pad);
+  return JSON.parse(atob(b64));
+}
+
+/* ---------- Show form after sign-in ---------- */
+function showForm() {
+  document.getElementById("signin-wall").hidden = true;
+  var card = document.getElementById("form-card");
+  card.hidden = false;
+
+  // Render user chip
+  var wrap = document.getElementById("user-chip-wrap");
+  wrap.innerHTML = "";
+  var chip = document.createElement("div");
+  chip.className = "user-chip";
+  chip.innerHTML =
+    '<img src="' + esc(currentUser.picture) + '" alt="" onerror="this.style.display=\'none\'">' +
+    '<div><div class="uname">' + esc(currentUser.given_name) + '</div>' +
+    '<div class="uemail">' + esc(currentUser.email) + '</div></div>' +
+    '<button class="sign-out" type="button" onclick="signOut()">Sign out</button>';
+  wrap.appendChild(chip);
+
+  document.getElementById("pic").value = currentUser.given_name;
+  setTodayDate();
+  loadDropdowns();
+}
+
+function signOut() {
+  currentUser = null;
+  document.getElementById("form-card").hidden = true;
+  document.getElementById("signin-wall").hidden = false;
+  document.getElementById("user-chip-wrap").innerHTML = "";
+  if (window.google && google.accounts) google.accounts.id.disableAutoSelect();
+}
+
+function setTodayDate() {
+  var d = new Date();
+  var iso = d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+  document.getElementById("shoot-date").value = iso;
+}
+
+/* ---------- Load brand/talent dropdowns from sheet ---------- */
+function gvizUrl(sheet) {
+  return "https://docs.google.com/spreadsheets/d/" + CONFIG.sheetId +
+    "/gviz/tq?tqx=out:json&sheet=" + encodeURIComponent(sheet);
+}
+
+function loadDropdowns() {
+  fetch(gvizUrl(CONFIG.rosterSheet))
+    .then(function (r) { return r.text(); })
+    .then(function (text) {
+      var json = JSON.parse(text.replace(/^[^\{]+/, "").replace(/\);?\s*$/, ""));
+      var brands = new Set(), talents = new Set();
+      (json.table.rows || []).forEach(function (row) {
+        var b = row.c && row.c[1] && row.c[1].v;
+        var t = row.c && row.c[2] && row.c[2].v;
+        if (b && typeof b === "string") brands.add(b);
+        if (t && typeof t === "string") talents.add(t);
+      });
+      fillSelect("brand-select", Array.from(brands).sort());
+      fillSelect("talent-select", Array.from(talents).sort());
+    })
+    .catch(function () {
+      // Fallback to last known values
+      fillSelect("brand-select", ["Cetaphil","FTI","Glow&Lovely","IHH","Softex","Urban Decay","Vinda","Yves Rocher"]);
+      fillSelect("talent-select", ["Dania","Dena","Felicia","Gladys","Gracella","Ica","Marsya"]);
+    });
+}
+
+function fillSelect(id, items) {
+  var sel = document.getElementById(id);
+  items.forEach(function (v) {
+    var o = document.createElement("option");
+    o.value = v; o.textContent = v;
+    sel.appendChild(o);
+  });
+  var other = document.createElement("option");
+  other.value = "__other__"; other.textContent = "Other…";
+  sel.appendChild(other);
+}
+
+/* ---------- "Other" free-text reveal ---------- */
+document.getElementById("brand-select").addEventListener("change", function () {
+  setOther("brand-other-wrap", "brand-other", this.value === "__other__");
+});
+document.getElementById("talent-select").addEventListener("change", function () {
+  setOther("talent-other-wrap", "talent-other", this.value === "__other__");
+});
+
+function setOther(wrapId, inputId, show) {
+  var wrap = document.getElementById(wrapId);
+  var inp = document.getElementById(inputId);
+  wrap.classList.toggle("visible", show);
+  inp.required = show;
+}
+
+/* ---------- Form submit ---------- */
+document.getElementById("shoot-form").addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  var brandSel = document.getElementById("brand-select").value;
+  var talentSel = document.getElementById("talent-select").value;
+  var brand  = brandSel  === "__other__" ? trim("brand-other")  : brandSel;
+  var talent = talentSel === "__other__" ? trim("talent-other") : talentSel;
+  var date   = document.getElementById("shoot-date").value;
+  var videos = parseFloat(document.getElementById("videos").value);
+  var hours  = parseFloat(document.getElementById("hours").value);
+  var pic    = document.getElementById("pic").value.trim();
+
+  if (!brand || !talent || !date || isNaN(videos) || isNaN(hours) || videos < 0 || hours < 0) {
+    showFeedback("error", "Missing fields", "Please fill in all required fields.");
+    return;
+  }
+
+  var payload = { brand: brand, talent: talent, date: date, videos: videos, hours: hours, pic: pic };
+
+  var btn = document.getElementById("submit-btn");
+  btn.disabled = true;
+  btn.textContent = "Submitting…";
+  hideFeedback();
+
+  postSession(payload, function (ok, errMsg) {
+    btn.disabled = false;
+    btn.textContent = "Submit Session";
+    if (ok) {
+      showSuccessState();
+    } else {
+      showFeedback("error", "Submission failed", errMsg || "Check the Apps Script URL and your network, then try again.");
+    }
+  });
+});
+
+function postSession(data, cb) {
+  if (CONFIG.appsScriptUrl === "YOUR_APPS_SCRIPT_URL") {
+    cb(false, "Apps Script URL is not configured. See the setup banner above.");
+    return;
+  }
+  // no-cors: avoids preflight; response is opaque but POST is sent
+  fetch(CONFIG.appsScriptUrl, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify(data)
+  })
+  .then(function () { cb(true); })
+  .catch(function (err) { cb(false, err.message); });
+}
+
+function showSuccessState() {
+  document.getElementById("form-main").hidden = true;
+  document.getElementById("success-state").style.display = "block";
+}
+
+document.getElementById("submit-another").addEventListener("click", function () {
+  document.getElementById("success-state").style.display = "none";
+  document.getElementById("form-main").hidden = false;
+  document.getElementById("shoot-form").reset();
+  setTodayDate();
+  if (currentUser) document.getElementById("pic").value = currentUser.given_name;
+  hideFeedback();
+  // Rebuild dropdowns (reset() cleared the selects)
+  document.getElementById("brand-select").innerHTML  = '<option value="">— select brand —</option>';
+  document.getElementById("talent-select").innerHTML = '<option value="">— select talent —</option>';
+  loadDropdowns();
+  setOther("brand-other-wrap",  "brand-other",  false);
+  setOther("talent-other-wrap", "talent-other", false);
+});
+
+/* ---------- Helpers ---------- */
+function showFeedback(type, title, msg) {
+  var el = document.getElementById("feedback");
+  el.className = type;
+  el.innerHTML = "<b>" + esc(title) + "</b>" + esc(msg);
+  el.style.display = "block";
+}
+function hideFeedback() { document.getElementById("feedback").style.display = "none"; }
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function pad2(n) { return n < 10 ? "0" + n : "" + n; }
+function trim(id) { return document.getElementById(id).value.trim(); }
+</script>
+</body>
+</html>

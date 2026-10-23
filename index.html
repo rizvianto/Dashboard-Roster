@@ -375,7 +375,7 @@ code{background:var(--grid); padding:1px 5px; border-radius:5px; font-size:.85em
 (function(){
   "use strict";
   var COLOR_CLASS = {}, LINE_CLASS = {};
-  var TALENT_ORDER = ["Dania","Dena","Felicia","Gladys","Gracella","Ica","Marsya"];
+  var TALENT_ORDER = ["Dania","Dena","Felicia","Gladys","Gracella","Ica","Marsya","Naomi"];
   TALENT_ORDER.forEach(function(t,i){ COLOR_CLASS[t] = "s"+(i+1); LINE_CLASS[t] = "ln"+(i+1); });
 
   var state = { rows: [], meta: {}, filters: { month:"all", brand:"all", talent:"all", pic:"all", q:"" } };
@@ -404,7 +404,7 @@ code{background:var(--grid); padding:1px 5px; border-radius:5px; font-size:.85em
     rosterSheet: "Production Roster",
     capSheet: "Talent Tracker",
     defaultCap: 70,
-    fallbackCaps: { Ica:70, Dania:70, Dena:70, Gladys:70, Felicia:50, Marsya:70, Gracella:70 },
+    fallbackCaps: { Ica:70, Dania:70, Dena:70, Gladys:70, Felicia:50, Marsya:70, Gracella:70, Naomi:70 },
     autoRefreshMs: 5*60*1000
   };
   var initialized = false;

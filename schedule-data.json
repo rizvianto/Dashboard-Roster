@@ -1,0 +1,11 @@
+{
+  "generatedAt": "2026-11-11",
+  "week": "Week of: 16 - 20 Nov",
+  "rows": [
+    {"row": 5, "no": "1", "brand": "Urban Decay", "talent": "Dania", "videos": "6", "days": "Mon", "status": "Scheduled"},
+    {"row": 6, "no": "2", "brand": "Urban Decay", "talent": "Dania", "videos": "4", "days": "Thurs", "status": "Scheduled"}
+  ],
+  "log": [
+    {"week": "Nov 11", "brand": "Cetaphil", "talent": "Dania", "videos": "3", "days": "Mon, Wed", "status": "Completed"}
+  ]
+}

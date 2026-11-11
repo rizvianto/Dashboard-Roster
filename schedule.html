@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Weekly Shoot Schedule — Intrepid</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;650;700;800&display=swap">
+<script src="https://accounts.google.com/gsi/client" async></script>
+<style>
+:root{
+  /* layout: header, KPI strip, Mon-Fri day board, bookings table + add form side by side, log */
+  /* brand tokens match index.html and submit.html; status colours are semantic and separate from the brand accent */
+  --page-bg:#f9f9f7; --surface:#fcfcfb; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+  --grid:#e1e0d9; --border:rgba(11,11,11,0.10);
+  --brand-teal:#1f8fa3; --brand-gold:#f5b515; --brand-orange:#f5871f; --brand-pink:#e8336b;
+  --brand-gradient:linear-gradient(135deg, #7fd8c4 0%, #4fa8d6 26%, var(--brand-gold) 55%, var(--brand-orange) 76%, var(--brand-pink) 100%);
+  --accent:var(--brand-teal);
+  --info:#2a78d6; --info-text:#1c5fb0;
+  --good:#0ca30c; --good-text:#006300;
+  --warning:#fab219; --warning-text:#8a5a00;
+  --serious:#ec835a; --serious-text:#a8431a;
+  --critical:#d03b3b; --critical-text:#b02a2a;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page-bg:#0d0d0d; --surface:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781;
+    --grid:#2c2c2a; --border:rgba(255,255,255,0.10);
+    --brand-teal:#5bc4d4; --accent:var(--brand-teal);
+    --info:#3987e5; --info-text:#7fb4f2;
+    --good:#0ca30c; --good-text:#4fd24f;
+    --warning:#c98500; --warning-text:#ffd47a;
+    --serious:#d95926; --serious-text:#f5a583;
+    --critical:#d03b3b; --critical-text:#f08a8a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page-bg:#0d0d0d; --surface:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781;
+  --grid:#2c2c2a; --border:rgba(255,255,255,0.10);
+  --brand-teal:#5bc4d4; --accent:var(--brand-teal);
+  --info:#3987e5; --info-text:#7fb4f2;
+  --good:#0ca30c; --good-text:#4fd24f;
+  --warning:#c98500; --warning-text:#ffd47a;
+  --serious:#d95926; --serious-text:#f5a583;
+  --critical:#d03b3b; --critical-text:#f08a8a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;}
+[hidden]{display:none !important;}
+html{background:var(--page-bg);}
+body{
+  background:var(--page-bg); color:var(--text-primary);
+  font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; font-size:14px;
+  padding-inline:16px; padding-block:calc(20px + env(safe-area-inset-top, 0px)) 40px; max-width:1180px; margin:0 auto;
+}
+body::before{content:""; position:fixed; top:0; left:0; right:0; height:4px; background:var(--brand-gradient); z-index:40;}
+h1,h2,h3{font-weight:700; letter-spacing:-0.01em; text-wrap:balance;}
+h1{font-size:1.5rem; margin:0;}
+h2{font-size:1.05rem; margin:0 0 8px;}
+h3{font-size:.9rem; margin:0;}
+a{color:var(--accent);}
+.secondary{color:var(--text-secondary);}
+.num{text-align:right; font-variant-numeric:tabular-nums;}
+.brand-eyebrow{
+  display:inline-flex; align-items:center; gap:6px; font-size:.68rem; font-weight:800; letter-spacing:.11em; text-transform:uppercase;
+  background:var(--brand-gradient); -webkit-background-clip:text; background-clip:text; color:transparent; margin-bottom:2px;
+}
+.brand-eyebrow::before{content:""; width:9px; height:9px; border-radius:3px; background:var(--brand-gradient); flex-shrink:0;}
+
+header.top{display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:flex-end; margin-bottom:18px;}
+header.top .week{margin:4px 0 0; font-size:.9rem;}
+header.top .meta{font-size:.8rem; text-align:right;}
+header.top .actions{margin-top:5px; display:flex; flex-wrap:wrap; gap:8px 12px; justify-content:flex-end; align-items:center;}
+header.top .actions a{text-decoration:none; white-space:nowrap;}
+header.top .actions a:hover{text-decoration:underline;}
+.livedot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--good); margin-left:6px;}
+.banner{background:color-mix(in srgb, var(--warning) 18%, var(--surface)); border:1px solid var(--border); border-radius:10px; padding:10px 14px; font-size:.82rem; margin-bottom:16px;}
+
+button, select, input{font:inherit;}
+button.ghost{
+  font-size:.8rem; color:var(--text-secondary); background:transparent;
+  border:1px solid var(--border); border-radius:7px; padding:6px 10px; cursor:pointer; white-space:nowrap;
+}
+button.ghost:hover{color:var(--text-primary); border-color:var(--text-muted);}
+button.primary{
+  font-size:.9rem; font-weight:700; color:#fff; background:var(--brand-gradient); background-size:200% 200%; background-position:left center;
+  border:none; border-radius:9px; padding:10px 18px; cursor:pointer; transition:background-position .35s;
+}
+button.primary:hover:not(:disabled){background-position:right center;}
+button:disabled{opacity:.55; cursor:not-allowed;}
+select, input[type=text], input[type=number], input[type=search]{
+  font-size:.85rem; color:var(--text-primary); background:var(--page-bg);
+  border:1px solid var(--border); border-radius:7px; padding:7px 8px; width:100%; min-width:0;
+}
+select:focus, input:focus, button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+label, .label{font-size:.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; display:block; margin-bottom:3px;}
+
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:22px;}
+.kpi{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;}
+.kpi .value{font-size:1.55rem; font-weight:650; margin-top:2px; letter-spacing:-0.02em; font-variant-numeric:tabular-nums;}
+.kpi .sub{font-size:.75rem; color:var(--text-secondary); margin-top:1px;}
+.meter{height:5px; border-radius:99px; background:var(--grid); margin-top:8px; overflow:hidden;}
+.meter span{display:block; height:100%; background:var(--good); border-radius:99px;}
+
+.card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:20px; min-width:0;}
+.card h2::after{content:""; display:block; width:34px; height:3px; margin-top:7px; border-radius:2px; background:var(--brand-gradient);}
+.card-head{display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:flex-start; margin-bottom:12px;}
+.card-head p{margin:2px 0 0; font-size:.8rem;}
+
+/* day board */
+.board{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;}
+.day{border:1px solid var(--border); border-radius:10px; background:var(--page-bg); padding:10px; display:flex; flex-direction:column; gap:8px; min-width:0;}
+.day.today{border-color:var(--accent);}
+.day-head{display:flex; justify-content:space-between; align-items:baseline; gap:6px;}
+.day-head .date{font-size:.75rem; font-weight:500; color:var(--text-muted);}
+.day-head .count{font-size:.75rem; color:var(--text-secondary); font-variant-numeric:tabular-nums;}
+.day .empty{font-size:.78rem; color:var(--text-muted); padding:6px 0;}
+.shoot{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 10px; display:flex; flex-direction:column; gap:4px; min-width:0;}
+.shoot .brand{font-weight:700; overflow-wrap:anywhere;}
+.shoot .who{font-size:.8rem; color:var(--text-secondary); overflow-wrap:anywhere;}
+.shoot.off .brand, .shoot.off .who{color:var(--text-muted); text-decoration:line-through;}
+
+.pill{display:inline-flex; align-items:center; gap:5px; font-size:.74rem; font-weight:700; padding:3px 8px; border-radius:99px; white-space:nowrap; align-self:flex-start;}
+.pill .dot{width:7px; height:7px; border-radius:50%; flex-shrink:0;}
+.pill.st-scheduled{color:var(--info-text); background:color-mix(in srgb, var(--info) 15%, transparent);}
+.pill.st-scheduled .dot{background:var(--info);}
+.pill.st-progress{color:var(--warning-text); background:color-mix(in srgb, var(--warning) 22%, transparent);}
+.pill.st-progress .dot{background:var(--warning);}
+.pill.st-completed{color:var(--good-text); background:color-mix(in srgb, var(--good) 16%, transparent);}
+.pill.st-completed .dot{background:var(--good);}
+.pill.st-postponed{color:var(--serious-text); background:color-mix(in srgb, var(--serious) 18%, transparent);}
+.pill.st-postponed .dot{background:var(--serious);}
+.pill.st-cancelled{color:var(--critical-text); background:color-mix(in srgb, var(--critical) 14%, transparent);}
+.pill.st-cancelled .dot{background:var(--critical);}
+.pill.st-none{color:var(--text-muted); background:var(--grid);}
+.pill.st-none .dot{background:var(--text-muted);}
+
+.split{display:grid; grid-template-columns:minmax(0,1.7fr) minmax(0,1fr); gap:16px; align-items:start;}
+@media (max-width:860px){ .split{grid-template-columns:minmax(0,1fr);} }
+
+.table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:10px;}
+table{border-collapse:collapse; width:100%; min-width:520px; font-size:.83rem;}
+thead th{background:var(--surface); text-align:left; color:var(--text-muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; padding:9px 10px; border-bottom:1px solid var(--border); white-space:nowrap;}
+thead th.num{text-align:right;}
+tbody td{padding:8px 10px; border-bottom:1px solid var(--border); white-space:nowrap;}
+tbody tr:last-child td{border-bottom:none;}
+td select{width:auto; padding:4px 6px; font-size:.8rem;}
+td.empty-row{color:var(--text-muted); white-space:normal; padding:16px 10px;}
+
+form.add{display:grid; gap:12px;}
+form.add fieldset{border:none; padding:0; margin:0; display:grid; gap:12px; min-width:0;}
+.row2{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px;}
+.days{display:flex; flex-wrap:wrap; gap:6px;}
+.days label{margin:0; text-transform:none; letter-spacing:0; font-size:.8rem; color:var(--text-secondary); border:1px solid var(--border); border-radius:99px; padding:5px 10px; cursor:pointer; user-select:none;}
+.days input{position:absolute; opacity:0; pointer-events:none;}
+.days label:has(input:checked){background:var(--brand-teal); color:#fff; border-color:transparent; font-weight:700;}
+:root[data-theme="dark"] .days label:has(input:checked){color:#0b0b0b;}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .days label:has(input:checked){color:#0b0b0b;} }
+.days label:has(input:focus-visible){outline:2px solid var(--accent); outline-offset:1px;}
+.msg{font-size:.8rem; margin:0;}
+.msg.err{color:var(--critical-text);}
+.msg.ok{color:var(--good-text);}
+.gate{font-size:.82rem; color:var(--text-secondary); background:var(--page-bg); border:1px dashed var(--border); border-radius:8px; padding:12px; display:grid; gap:10px;}
+.gate p{margin:0; line-height:1.5;}
+.who-row{display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; align-items:center; font-size:.8rem; color:var(--text-secondary);}
+.who-row strong{color:var(--text-primary);}
+code{background:var(--grid); padding:1px 5px; border-radius:5px; font-size:.85em;}
+@media (max-width:640px){ header.top{align-items:flex-start;} header.top .meta{text-align:left;} header.top .actions{justify-content:flex-start;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <div class="brand-eyebrow">Intrepid</div>
+    <h1>Weekly Shoot Schedule</h1>
+    <p class="week secondary" id="week-label">Loading…</p>
+  </div>
+  <div class="meta secondary">
+    <div id="asof">Loading…</div>
+    <div class="actions">
+      <button class="ghost" id="refresh-btn" type="button">Refresh now</button>
+      <a id="source-link" href="#" target="_blank" rel="noopener">Open sheet ↗</a>
+      <a href="index.html">Roster dashboard</a>
+    </div>
+  </div>
+</header>
+
+<div class="banner" id="banner" hidden></div>
+
+<section class="kpis" id="kpis" aria-label="This week's totals"></section>
+
+<section class="card">
+  <div class="card-head">
+    <div><h2>Week at a glance</h2><p class="secondary">Each shoot appears under every day it is booked for. Video counts are per booking, not per day.</p></div>
+  </div>
+  <div class="board" id="board"></div>
+</section>
+
+<div class="split">
+  <section class="card">
+    <div class="card-head">
+      <div><h2>This week's shoots</h2><p class="secondary" id="rows-count">&mdash;</p></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th class="num">No.</th><th>Brand</th><th>Talent</th><th class="num"># Videos</th><th>Shoot day(s)</th><th>Status</th></tr></thead>
+        <tbody id="rows-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div><h2>Add a shoot</h2><p class="secondary">Adds a row to the <strong>This Week</strong> tab of the sheet.</p></div>
+    </div>
+
+    <div class="gate" id="gate-setup" hidden>
+      <p><strong>Adding shoots isn't set up yet.</strong> Deploy <code>schedule-apps-script.gs</code> from the schedule sheet and paste its web app URL into <code>CONFIG.scriptUrl</code> in <code>schedule.html</code>. The steps are at the top of that script file.</p>
+    </div>
+    <div class="gate" id="gate-signin" hidden>
+      <p>Sign in with your <strong>@intrepid.asia</strong> Google account to add shoots and change statuses.</p>
+      <div id="g-signin-btn"></div>
+      <p class="msg err" id="signin-msg" role="status" hidden></p>
+    </div>
+
+    <form class="add" id="add-form" novalidate hidden>
+      <div class="who-row"><span>Signed in as <strong id="who-name"></strong></span><button class="ghost" type="button" id="signout-btn">Sign out</button></div>
+      <fieldset id="add-fields">
+        <div>
+          <label for="a-brand">Brand</label>
+          <input type="text" id="a-brand" list="brand-list" maxlength="80" autocomplete="off" required>
+          <datalist id="brand-list"></datalist>
+        </div>
+        <div class="row2">
+          <div>
+            <label for="a-talent">Talent</label>
+            <input type="text" id="a-talent" list="talent-list" maxlength="80" autocomplete="off" required>
+            <datalist id="talent-list"></datalist>
+          </div>
+          <div>
+            <label for="a-videos"># Videos</label>
+            <input type="number" id="a-videos" min="0" max="999" step="1" inputmode="numeric" required>
+          </div>
+        </div>
+        <div>
+          <span class="label">Shoot day(s)</span>
+          <div class="days" id="a-days"></div>
+        </div>
+        <div>
+          <label for="a-status">Status</label>
+          <select id="a-status"></select>
+        </div>
+        <div><button class="primary" type="submit" id="a-submit">Add shoot</button></div>
+      </fieldset>
+      <p class="msg" id="add-msg" role="status" hidden></p>
+    </form>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <div><h2>Log</h2><p class="secondary" id="log-count">Past weeks, from the <strong>Log</strong> tab.</p></div>
+    <div style="flex:0 1 220px; min-width:0;"><input type="search" id="log-search" placeholder="Filter by brand, talent, week…" aria-label="Filter log"></div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Week</th><th>Brand</th><th>Talent</th><th class="num"># Videos</th><th>Shoot day(s)</th><th>Status</th></tr></thead>
+      <tbody id="log-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+(function(){
+  "use strict";
+  var CONFIG = {
+    sheetId: "1lsUyXJX0nlDrtv_T5AJuOjU-05bntdkAWJdp823bBWA",
+    weekSheet: "This Week",
+    logSheet: "Log",
+    allowedDomain: "intrepid.asia",
+    googleClientId: "373030385336-uflrubpps2530prn3qe0ulg4020cgmu4.apps.googleusercontent.com", // same client as submit.html
+    scriptUrl: "", // web app URL of schedule-apps-script.gs, ends in /exec
+    autoRefreshMs: 5*60*1000
+  };
+  var STATUSES = ["Scheduled","In Progress","Completed","Postponed","Cancelled"];
+  var STATUS_CLASS = {"scheduled":"st-scheduled","in progress":"st-progress","completed":"st-completed","postponed":"st-postponed","cancelled":"st-cancelled"};
+  var DAYS = ["Mon","Tues","Wed","Thurs","Fri","Sat","Sun"];
+  var DAY_KEYS = ["mon","tue","wed","thu","fri","sat","sun"];
+  var MONTHS = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+  var SCRIPT_READY = /^https:\/\/script\.google\.com\/(a\/macros\/[\w.-]+|macros)\/s\/[\w-]+\/exec$/.test(CONFIG.scriptUrl);
+
+  var state = { week:"", rows:[], log:[], user:null, source:"none", busy:false };
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]; }); }
+  function num(v){ var n = parseFloat(String(v==null?"":v).replace(/,/g,"")); return isNaN(n) ? 0 : n; }
+  function pill(status){
+    var cls = STATUS_CLASS[String(status||"").trim().toLowerCase()] || "st-none";
+    return '<span class="pill '+cls+'"><span class="dot"></span>'+esc(status || "No status")+'</span>';
+  }
+  function isCancelled(r){ return String(r.status).trim().toLowerCase()==="cancelled"; }
+  function isDone(r){ return String(r.status).trim().toLowerCase()==="completed"; }
+
+  // "Mon, Wed" / "Thurs" / "Mon-Wed" -> [0,2] / [3] / [0,1,2]
+  function parseDays(text){
+    var out = [];
+    String(text||"").toLowerCase().split(/[,&\/+]|\band\b/).forEach(function(part){
+      var ends = part.split(/\s*(?:-|–|\bto\b)\s*/).map(function(t){ return DAY_KEYS.indexOf(t.trim().slice(0,3)); });
+      if(ends.length===2 && ends[0]>=0 && ends[1]>=ends[0]){ for(var i=ends[0];i<=ends[1];i++) out.push(i); }
+      else ends.forEach(function(i){ if(i>=0) out.push(i); });
+    });
+    return out.filter(function(v,i){ return out.indexOf(v)===i; }).sort();
+  }
+
+  // "Week of: 16 - 20 Nov" -> the Monday as a Date, only when that date really is a Monday
+  function weekStart(label){
+    var m = String(label||"").match(/(\d{1,2})\s*(?:-|–|to)\s*\d{1,2}\s+([A-Za-z]{3})/);
+    if(!m) return null;
+    var mi = MONTHS.indexOf(m[2].toLowerCase()); if(mi<0) return null;
+    var now = new Date(), best = null;
+    [now.getFullYear()-1, now.getFullYear(), now.getFullYear()+1].forEach(function(y){
+      var d = new Date(y, mi, +m[1]);
+      if(d.getDay()===1 && (!best || Math.abs(d-now) < Math.abs(best-now))) best = d;
+    });
+    return best;
+  }
+
+  // ---------- sheet script (signed-in read + write) ----------
+  function scriptPost(payload){
+    payload.idToken = state.user.token;
+    // text/plain keeps this a "simple" request; Apps Script web apps cannot answer a CORS preflight
+    return fetch(CONFIG.scriptUrl, { method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(payload) }).then(function(res){
+      if(!res.ok) throw new Error("The sheet script answered HTTP "+res.status+".");
+      return res.text();
+    }).then(function(t){
+      var data;
+      try { data = JSON.parse(t); } catch(e){ throw new Error("Unexpected answer from the sheet script. Check the web app is deployed with access set to Anyone."); }
+      if(!data.ok){
+        if(data.signIn) signOut(data.error);
+        throw new Error(data.error || "The sheet script reported an error.");
+      }
+      return data;
+    });
+  }
+
+  // ---------- public read (only works if the sheet is shared "Anyone with the link") ----------
+  function gviz(sheet, range, headers){
+    var url = "https://docs.google.com/spreadsheets/d/"+CONFIG.sheetId+"/gviz/tq?tqx=out:json&sheet="+encodeURIComponent(sheet)+
+      (range ? "&range="+range : "")+"&headers="+headers;
+    return fetch(url).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.text(); }).then(function(t){
+      var a = t.indexOf("{"), b = t.lastIndexOf("}");
+      if(a<0 || b<0) throw new Error("sheet is not publicly readable");
+      var json = JSON.parse(t.slice(a,b+1));
+      if(json.status==="error") throw new Error("sheet is not publicly readable");
+      return (json.table.rows||[]).map(function(r){
+        return (r.c||[]).map(function(c){ return c==null || c.v==null ? "" : String(c.f!=null ? c.f : c.v).trim(); });
+      });
+    });
+  }
+  function publicRead(){
+    return Promise.all([ gviz(CONFIG.weekSheet,"A1:A1",0), gviz(CONFIG.weekSheet,"A4:F",1), gviz(CONFIG.logSheet,"",1) ]).then(function(res){
+      var rows = res[1].filter(function(v){ return v[1] && v[2]; }).map(function(v){
+        return { row:null, no:v[0], brand:v[1], talent:v[2], videos:v[3], days:v[4]||"", status:v[5]||"" };
+      });
+      var log = res[2].filter(function(v){ return v[1]; }).map(function(v){
+        return { week:v[0], brand:v[1], talent:v[2]||"", videos:v[3], days:v[4]||"", status:v[5]||"" };
+      });
+      return { week:(res[0][0]||[""])[0], rows:rows, log:log };
+    });
+  }
+
+  // ---------- load ----------
+  function stamp(){ return new Date().toLocaleString("en-US",{month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}); }
+  function apply(data, source, label){
+    state.week = data.week || ""; state.rows = data.rows || []; state.log = data.log || []; state.source = source;
+    $("asof").innerHTML = source==="snapshot" ? "Showing "+esc(label) : "Live from the sheet <span class=\"livedot\"></span> &middot; updated "+esc(label);
+    render();
+  }
+  function showBanner(text){ var b = $("banner"); b.hidden = !text; b.textContent = text || ""; }
+
+  function refresh(){
+    var btn = $("refresh-btn"); btn.disabled = true; btn.textContent = "Refreshing…";
+    var signedIn = !!state.user;
+    var p = signedIn
+      ? scriptPost({action:"read"}).then(function(d){ apply(d,"script",stamp()); showBanner(""); })
+      : publicRead().then(function(d){ apply(d,"public",stamp()); showBanner(""); });
+    return p.catch(function(err){
+      if(signedIn) showBanner("Could not reach the sheet ("+err.message+"). Showing the last data loaded.");
+      else if(state.source==="snapshot" || state.source==="none") showBanner(SCRIPT_READY
+        ? "This is a saved snapshot, not live data. Sign in under “Add a shoot” to load the live schedule."
+        : "This is a saved snapshot, not live data. Live data needs the sheet script set up (see “Add a shoot”).");
+    }).then(function(){ btn.disabled = false; btn.textContent = "Refresh now"; });
+  }
+
+  // ---------- render ----------
+  function render(){
+    $("week-label").textContent = state.week || "Week not set in the sheet";
+    renderKpis(); renderBoard(); renderRows(); renderLog(); renderForm();
+  }
+
+  function renderKpis(){
+    var active = state.rows.filter(function(r){ return !isCancelled(r); });
+    var planned = active.reduce(function(s,r){ return s+num(r.videos); }, 0);
+    var done = active.filter(isDone).reduce(function(s,r){ return s+num(r.videos); }, 0);
+    var brands = new Set(active.map(function(r){ return r.brand; }));
+    var talents = new Set(active.map(function(r){ return r.talent; }));
+    var open = state.rows.filter(function(r){ var s = String(r.status).trim().toLowerCase(); return s==="postponed" || s==="cancelled"; }).length;
+    var pct = planned ? Math.round(done/planned*100) : 0;
+    var tiles = [
+      {l:"Shoots booked", v:active.length, s: open ? open+" postponed or cancelled" : "None postponed or cancelled"},
+      {l:"Videos planned", v:planned, s:"Cancelled shoots excluded"},
+      {l:"Videos completed", v:done+" / "+planned, s:pct+"% of the week", meter:pct},
+      {l:"Brands", v:brands.size, s:Array.from(brands).slice(0,3).join(", ") || "None yet"},
+      {l:"Talent", v:talents.size, s:Array.from(talents).slice(0,3).join(", ") || "None yet"}
+    ];
+    $("kpis").innerHTML = tiles.map(function(t){
+      return '<div class="kpi"><div class="label">'+esc(t.l)+'</div><div class="value">'+esc(t.v)+'</div><div class="sub">'+esc(t.s)+'</div>'+
+        (t.meter!=null ? '<div class="meter"><span style="width:'+t.meter+'%"></span></div>' : '')+'</div>';
+    }).join("");
+  }
+
+  function renderBoard(){
+    var byDay = DAYS.map(function(){ return []; }), unplaced = [];
+    state.rows.forEach(function(r){
+      var ds = parseDays(r.days);
+      if(!ds.length) unplaced.push(r); else ds.forEach(function(d){ byDay[d].push(r); });
+    });
+    var start = weekStart(state.week), today = new Date(); today.setHours(0,0,0,0);
+    var html = "";
+    DAYS.forEach(function(name, i){
+      if(i>4 && !byDay[i].length) return; // weekend columns only when something is booked
+      var dateText = "", isToday = false;
+      if(start){
+        var d = new Date(start.getFullYear(), start.getMonth(), start.getDate()+i);
+        dateText = d.toLocaleDateString("en-GB",{day:"numeric", month:"short"});
+        isToday = d.getTime()===today.getTime();
+      }
+      html += dayColumn(name, dateText + (isToday ? " · today" : ""), byDay[i], isToday);
+    });
+    if(unplaced.length) html += dayColumn("Day not set", "", unplaced, false);
+    $("board").innerHTML = html;
+  }
+  function dayColumn(name, dateText, rows, isToday){
+    var cards = rows.map(function(r){
+      var n = parseDays(r.days).length;
+      return '<div class="shoot'+(isCancelled(r)?' off':'')+'"><div class="brand">'+esc(r.brand)+'</div>'+
+        '<div class="who">'+esc(r.talent)+' &middot; '+esc(r.videos || "0")+' video'+(num(r.videos)===1?'':'s')+(n>1?' across '+n+' days':'')+'</div>'+pill(r.status)+'</div>';
+    }).join("");
+    return '<div class="day'+(isToday?' today':'')+'"><div class="day-head"><h3>'+esc(name)+' <span class="date">'+esc(dateText)+'</span></h3>'+
+      '<span class="count">'+rows.length+'</span></div>'+(cards || '<div class="empty">No shoot</div>')+'</div>';
+  }
+
+  function renderRows(){
+    var n = state.rows.length;
+    $("rows-count").textContent = n + " booking" + (n===1?"":"s") + " in the sheet";
+    if(!n){ $("rows-tbody").innerHTML = '<tr><td colspan="6" class="empty-row">No shoots in the sheet for this week yet.</td></tr>'; return; }
+    var editable = !!state.user && state.source==="script";
+    $("rows-tbody").innerHTML = state.rows.map(function(r, i){
+      var statusCell = pill(r.status);
+      if(editable && r.row){
+        var opts = STATUSES.slice();
+        if(r.status && opts.indexOf(r.status)===-1) opts.unshift(r.status);
+        statusCell = '<select data-i="'+i+'" aria-label="Status for '+esc(r.brand)+', '+esc(r.days)+'"'+(state.busy?' disabled':'')+'>'+opts.map(function(s){
+          return '<option'+(s===r.status?' selected':'')+'>'+esc(s)+'</option>'; }).join("")+'</select>';
+      }
+      return '<tr><td class="num">'+esc(r.no)+'</td><td>'+esc(r.brand)+'</td><td>'+esc(r.talent)+'</td><td class="num">'+esc(r.videos)+'</td><td>'+esc(r.days)+'</td><td>'+statusCell+'</td></tr>';
+    }).join("");
+  }
+
+  function renderLog(){
+    var q = $("log-search").value.trim().toLowerCase();
+    var rows = state.log.filter(function(r){ return !q || (r.week+" "+r.brand+" "+r.talent+" "+r.status).toLowerCase().indexOf(q)!==-1; });
+    $("log-count").textContent = rows.length + " of " + state.log.length + " past booking" + (state.log.length===1?"":"s") + ", from the Log tab";
+    $("log-tbody").innerHTML = rows.length ? rows.map(function(r){
+      return '<tr><td>'+esc(r.week)+'</td><td>'+esc(r.brand)+'</td><td>'+esc(r.talent)+'</td><td class="num">'+esc(r.videos)+'</td><td>'+esc(r.days)+'</td><td>'+pill(r.status)+'</td></tr>';
+    }).join("") : '<tr><td colspan="6" class="empty-row">'+(state.log.length ? "Nothing in the log matches that filter." : "The Log tab is empty.")+'</td></tr>';
+  }
+
+  function renderForm(){
+    $("gate-setup").hidden = SCRIPT_READY;
+    $("gate-signin").hidden = !SCRIPT_READY || !!state.user;
+    $("add-form").hidden = !state.user;
+    $("add-fields").disabled = state.busy;
+    $("who-name").textContent = state.user ? state.user.email : "";
+    var all = state.rows.concat(state.log);
+    function options(key){ return Array.from(new Set(all.map(function(r){ return r[key]; }).filter(Boolean))).sort().map(function(v){ return '<option value="'+esc(v)+'"></option>'; }).join(""); }
+    $("brand-list").innerHTML = options("brand");
+    $("talent-list").innerHTML = options("talent");
+  }
+
+  function setMsg(id, text, kind){ var el = $(id); el.hidden = !text; el.textContent = text || ""; el.className = "msg" + (kind ? " "+kind : ""); }
+  function setBusy(b){ state.busy = b; renderRows(); renderForm(); }
+
+  // ---------- Google sign-in (same client and domain rule as submit.html; the script re-checks the token) ----------
+  function decodeJwt(token){
+    var b64 = token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+    var bytes = Uint8Array.from(atob(b64), function(c){ return c.charCodeAt(0); });
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
+  function handleCredential(resp){
+    var p;
+    try { p = decodeJwt(resp.credential); } catch(e){ return setMsg("signin-msg","Sign-in failed. Try again.","err"); }
+    if(p.hd !== CONFIG.allowedDomain) return setMsg("signin-msg","Only @"+CONFIG.allowedDomain+" accounts can edit the schedule.","err");
+    state.user = { email:p.email, token:resp.credential };
+    setMsg("signin-msg","");
+    render(); refresh();
+  }
+  function signOut(message){
+    state.user = null;
+    if(window.google && google.accounts) google.accounts.id.disableAutoSelect();
+    setMsg("signin-msg", message || "", message ? "err" : "");
+    render();
+  }
+  function initSignIn(){
+    if(!SCRIPT_READY || !window.google || !google.accounts) return;
+    google.accounts.id.initialize({ client_id: CONFIG.googleClientId, callback: handleCredential, hd: CONFIG.allowedDomain, auto_select: true });
+    google.accounts.id.renderButton($("g-signin-btn"), { theme:"outline", size:"large", text:"signin_with", shape:"rectangular", width:260 });
+    google.accounts.id.prompt(); // returning users are signed in without a click
+  }
+
+  // ---------- actions ----------
+  $("add-form").addEventListener("submit", function(e){
+    e.preventDefault();
+    if(!state.user || state.busy) return;
+    var brand = $("a-brand").value.trim(), talent = $("a-talent").value.trim(), videosRaw = $("a-videos").value.trim();
+    var videos = Number(videosRaw);
+    var days = Array.prototype.filter.call(document.querySelectorAll("#a-days input"), function(i){ return i.checked; }).map(function(i){ return i.value; });
+    if(!brand) return setMsg("add-msg","Enter the brand.","err");
+    if(!talent) return setMsg("add-msg","Enter the talent.","err");
+    if(videosRaw==="" || !Number.isInteger(videos) || videos<0 || videos>999) return setMsg("add-msg","Enter the number of videos as a whole number.","err");
+    if(!days.length) return setMsg("add-msg","Pick at least one shoot day.","err");
+    setMsg("add-msg","Adding to the sheet…"); setBusy(true);
+    scriptPost({ action:"add", brand:brand, talent:talent, videos:videos, days:days, status:$("a-status").value }).then(function(d){
+      apply(d,"script",stamp());
+      $("add-form").reset();
+      setMsg("add-msg","Added "+brand+" with "+talent+" on "+days.join(", ")+".","ok");
+    }).catch(function(err){ setMsg("add-msg","Not added: "+err.message,"err"); }).then(function(){ setBusy(false); });
+  });
+
+  $("rows-tbody").addEventListener("change", function(e){
+    var sel = e.target.closest("select"); if(!sel || !state.user) return;
+    var r = state.rows[+sel.dataset.i]; if(!r) return;
+    setBusy(true);
+    scriptPost({ action:"status", row:r.row, brand:r.brand, talent:r.talent, status:sel.value }).then(function(d){
+      apply(d,"script",stamp()); showBanner("");
+    }).catch(function(err){
+      showBanner("Status not changed: "+err.message);
+    }).then(function(){ setBusy(false); });
+  });
+
+  $("log-search").addEventListener("input", renderLog);
+  $("refresh-btn").addEventListener("click", refresh);
+  $("signout-btn").addEventListener("click", function(){ signOut(""); });
+
+  // ---------- boot ----------
+  $("source-link").href = "https://docs.google.com/spreadsheets/d/"+CONFIG.sheetId+"/edit";
+  $("a-days").innerHTML = DAYS.map(function(d){ return '<label><input type="checkbox" value="'+d+'">'+d+'</label>'; }).join("");
+  $("a-status").innerHTML = STATUSES.map(function(s){ return '<option>'+s+'</option>'; }).join("");
+  if(document.readyState==="complete") initSignIn(); else window.addEventListener("load", initSignIn);
+
+  fetch("schedule-data.json").then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }).then(function(snap){
+    if(snap && state.source==="none") apply(snap, "snapshot", "saved snapshot from "+(snap.generatedAt || "an unknown date"));
+    else if(state.source==="none") render();
+    if(!state.user) refresh();
+    setInterval(function(){ if(!state.busy) refresh(); }, CONFIG.autoRefreshMs);
+  });
+})();
+</script>
+</body>
+</html>

@@ -59,6 +59,35 @@ reasonably current. Ask Claude Code to "refresh the roster dashboard's cached
 snapshot" — it re-reads the sheet and regenerates `data.json`, then commit
 and push.
 
+## Weekly shoot schedule (`schedule.html`)
+
+A second page for the weekly schedule
+[sheet](https://docs.google.com/spreadsheets/d/1lsUyXJX0nlDrtv_T5AJuOjU-05bntdkAWJdp823bBWA/edit)
+(*This Week* and *Log* tabs): weekly totals, a Mon–Fri board, the booking
+table, the log, and a form that adds a shoot to the sheet. The sheet stays
+the single source of truth.
+
+Reading live data, adding shoots and changing statuses all go through
+`schedule-apps-script.gs`, deployed as a web app from the schedule sheet.
+People sign in with the same Google sign-in as `submit.html` (same OAuth
+client, @intrepid.asia only), and the script verifies that sign-in with
+Google on every request, so the sheet does not need to be shared publicly.
+
+One-time setup, by the sheet owner:
+
+1. In the schedule sheet: **Extensions → Apps Script**, paste
+   `schedule-apps-script.gs`, save.
+2. **Deploy → New deployment → Web app**, *Execute as* **Me**, *Who has
+   access* **Anyone**. Approve the permission prompt.
+3. Paste the web app URL into `CONFIG.scriptUrl` in `schedule.html`, commit
+   and push to `main`.
+
+Until step 3 is done the page shows `schedule-data.json`, a saved snapshot,
+with a banner saying so (or live data, if the sheet happens to be shared
+"Anyone with the link"). After editing the script later, use **Deploy →
+Manage deployments → Edit → New version**, otherwise the old code keeps
+running.
+
 ## Notes on the data
 
 Totals in this dashboard are computed directly from the raw session rows,
